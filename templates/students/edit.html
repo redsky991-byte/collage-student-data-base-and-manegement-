@@ -1,0 +1,163 @@
+{% extends 'base.html' %}
+{% block page_title %}Edit Student{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-pencil-square me-2 text-warning"></i>Edit Student: {{ student.full_name }}</h6>
+    <a href="{{ url_for('view_student', sid=student.id) }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-4">
+        <div class="col-12"><h6 class="text-primary border-bottom pb-2"><i class="bi bi-person me-2"></i>Personal Information</h6></div>
+
+        <div class="col-md-4">
+          <label class="form-label">Roll Number <span class="text-danger">*</span></label>
+          <input type="text" name="roll_number" class="form-control" value="{{ student.roll_number }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Full Name <span class="text-danger">*</span></label>
+          <input type="text" name="full_name" class="form-control" value="{{ student.full_name }}" required>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Gender <span class="text-danger">*</span></label>
+          <select name="gender" class="form-select" required>
+            <option value="">Select Gender</option>
+            <option value="Male" {% if student.gender == 'Male' %}selected{% endif %}>Male</option>
+            <option value="Female" {% if student.gender == 'Female' %}selected{% endif %}>Female</option>
+            <option value="Other" {% if student.gender == 'Other' %}selected{% endif %}>Other</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Father's Name</label>
+          <input type="text" name="father_name" class="form-control" value="{{ student.father_name or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Mother's Name</label>
+          <input type="text" name="mother_name" class="form-control" value="{{ student.mother_name or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" name="date_of_birth" class="form-control" value="{{ student.date_of_birth or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CNIC / B-Form</label>
+          <input type="text" name="cnic_number" class="form-control" value="{{ student.cnic_number or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-control" value="{{ student.phone or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ student.email or '' }}">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Address</label>
+          <textarea name="address" class="form-control" rows="2">{{ student.address or '' }}</textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Update Photo</label>
+          {% if student.photo %}
+          <div class="mb-2"><img src="{{ url_for('static', filename='uploads/' + student.photo) }}" class="rounded" style="height:80px"></div>
+          {% endif %}
+          <input type="file" name="photo" class="form-control" accept="image/*" onchange="previewPhoto(this)">
+          <img id="photo-preview" src="" class="mt-2 rounded" style="max-height:100px;display:none">
+        </div>
+
+        <div class="col-12 mt-2"><h6 class="text-primary border-bottom pb-2"><i class="bi bi-mortarboard me-2"></i>Academic Information</h6></div>
+
+        <div class="col-md-4">
+          <label class="form-label">Department / Class <span class="text-danger">*</span></label>
+          <select name="department_id" id="dept-select" class="form-select" required onchange="loadSubjects(this.value)">
+            {% for d in departments %}
+            <option value="{{ d.id }}" {% if d.id == student.department_id %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Class / Section</label>
+          <input type="text" name="class_name" class="form-control" value="{{ student.class_name or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Admission Date</label>
+          <input type="date" name="admission_date" class="form-control" value="{{ student.admission_date or '' }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="Active" {% if student.status == 'Active' %}selected{% endif %}>Active</option>
+            <option value="Inactive" {% if student.status == 'Inactive' %}selected{% endif %}>Inactive</option>
+            <option value="Graduated" {% if student.status == 'Graduated' %}selected{% endif %}>Graduated</option>
+            <option value="Suspended" {% if student.status == 'Suspended' %}selected{% endif %}>Suspended</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Enrolled Subjects</label>
+          <div id="subjects-container" class="border rounded p-3 bg-light">
+            <div class="row g-2">
+              {% for s in dept_subjects %}
+              <div class="col-md-4">
+                <div class="form-check">
+                  <input class="form-check-input" type="checkbox" name="subjects" value="{{ s.id }}" id="sub{{ s.id }}"
+                    {% if s.id|string in subject_ids %}checked{% endif %}>
+                  <label class="form-check-label" for="sub{{ s.id }}">{{ s.name }}</label>
+                </div>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12 mt-3">
+          <button type="submit" class="btn btn-warning px-4"><i class="bi bi-save me-2"></i>Update Student</button>
+          <a href="{{ url_for('view_student', sid=student.id) }}" class="btn btn-outline-secondary ms-2"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+var currentSubjectIds = {{ subject_ids | tojson }};
+
+function previewPhoto(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var preview = document.getElementById('photo-preview');
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function loadSubjects(deptId) {
+  var container = document.getElementById('subjects-container');
+  if (!deptId) {
+    container.innerHTML = '<p class="text-muted mb-0">Select a department first</p>';
+    return;
+  }
+  fetch('/api/subjects/' + deptId)
+    .then(r => r.json())
+    .then(data => {
+      if (data.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No subjects for this department.</p>';
+        return;
+      }
+      var html = '<div class="row g-2">';
+      data.forEach(function(s) {
+        var checked = currentSubjectIds.includes(String(s.id)) ? 'checked' : '';
+        html += '<div class="col-md-4"><div class="form-check">' +
+          '<input class="form-check-input" type="checkbox" name="subjects" value="' + s.id + '" id="sub' + s.id + '" ' + checked + '>' +
+          '<label class="form-check-label" for="sub' + s.id + '">' + s.name + '</label>' +
+          '</div></div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    });
+}
+</script>
+{% endblock %}

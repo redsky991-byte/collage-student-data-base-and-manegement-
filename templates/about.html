@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block page_title %}About Us{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card mb-4">
+      <div class="card-body text-center py-5" style="background: linear-gradient(135deg, #1a3a6b, #2563eb); border-radius: 12px; color: white;">
+        <i class="bi bi-mortarboard-fill" style="font-size: 4rem; margin-bottom: 15px; display:block"></i>
+        <h3 class="fw-bold mb-2">College &amp; School Management System</h3>
+        <p class="mb-0 opacity-75">A Complete Student Data Management Solution</p>
+        <div class="mt-3"><span class="badge bg-light text-dark px-3 py-2">Version 1.0.0</span></div>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-person-badge-fill me-2 text-primary"></i>Developer Information</h6>
+      </div>
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-4">
+          <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center flex-shrink-0" style="width:80px;height:80px;font-size:2rem">
+            <i class="bi bi-person-fill"></i>
+          </div>
+          <div>
+            <h5 class="mb-1 fw-bold">Zulfiqar Ali</h5>
+            <p class="text-muted mb-1">Software Developer &amp; IT Specialist</p>
+            <div class="d-flex gap-3 flex-wrap">
+              <a href="https://www.maxtechfix.com" target="_blank" class="text-decoration-none">
+                <i class="bi bi-globe me-1 text-primary"></i>www.maxtechfix.com
+              </a>
+            </div>
+          </div>
+        </div>
+        <hr>
+        <p class="text-muted">
+          This College &amp; School Management System was developed by Zulfiqar Ali at MAXTECHFIX to provide educational institutes with a modern, easy-to-use student data management solution.
+          The system supports both school and college level management with comprehensive features for student records, photo management, subject enrollment, and data backup.
+        </p>
+      </div>
+    </div>
+
+    <div class="card mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-stars me-2 text-warning"></i>Features</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          {% set features = [
+            ('bi-people-fill text-primary', 'Student Management', 'Add, edit, delete, and view complete student bio data'),
+            ('bi-camera-fill text-success', 'Photo Upload', 'Upload and manage student photos'),
+            ('bi-building text-info', 'Departments', 'College departments and school classes 1-10'),
+            ('bi-book-fill text-warning', 'Subjects', 'Manage subjects per department/class'),
+            ('bi-printer-fill text-info', 'Print Support', 'Print student profiles and class lists'),
+            ('bi-cloud-arrow-down-fill text-success', 'Data Backup', 'Download/restore SQLite database backups'),
+            ('bi-gear-fill text-secondary', 'Customizable', 'Change institute name, colors, and branding'),
+            ('bi-wifi-off text-danger', 'Offline Ready', 'Works offline on local PC without internet'),
+          ] %}
+          {% for icon, title, desc in features %}
+          <div class="col-md-6">
+            <div class="d-flex gap-3">
+              <i class="bi {{ icon }} fs-4 flex-shrink-0 mt-1"></i>
+              <div><strong>{{ title }}</strong><p class="text-muted small mb-0">{{ desc }}</p></div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-tools me-2 text-primary"></i>Technology Stack</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3 text-center">
+          <div class="col-4"><div class="p-3 rounded border"><i class="bi bi-filetype-py text-primary fs-2"></i><div class="mt-1 fw-semibold">Python Flask</div><small class="text-muted">Backend Framework</small></div></div>
+          <div class="col-4"><div class="p-3 rounded border"><i class="bi bi-database-fill text-success fs-2"></i><div class="mt-1 fw-semibold">SQLite</div><small class="text-muted">Database</small></div></div>
+          <div class="col-4"><div class="p-3 rounded border"><i class="bi bi-bootstrap-fill text-info fs-2"></i><div class="mt-1 fw-semibold">Bootstrap 5</div><small class="text-muted">UI Framework</small></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-4 text-muted">
+      <small>&copy; 2024 MAXTECHFIX | Developed by Zulfiqar Ali | <a href="https://www.maxtechfix.com" target="_blank">www.maxtechfix.com</a></small>
+    </div>
+  </div>
+</div>
+{% endblock %}

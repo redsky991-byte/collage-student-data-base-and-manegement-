@@ -1,0 +1,77 @@
+{% extends 'base.html' %}
+{% block page_title %}Backup &amp; Restore{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-cloud-arrow-down-fill me-2 text-success"></i>Download Backup</h6>
+      </div>
+      <div class="card-body text-center py-5">
+        <i class="bi bi-database-fill-down text-success" style="font-size:4rem"></i>
+        <h5 class="mt-3">Backup Your Data</h5>
+        <p class="text-muted">Download a complete copy of the database including all student records, departments, subjects, and settings.</p>
+        <a href="{{ url_for('backup_download') }}" class="btn btn-success btn-lg px-5">
+          <i class="bi bi-download me-2"></i>Download Backup (.db)
+        </a>
+        <div class="mt-3">
+          <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Backup file can be used to restore data on any installation.</small>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-cloud-arrow-up-fill me-2 text-warning"></i>Restore from Backup</h6>
+      </div>
+      <div class="card-body py-5">
+        <div class="text-center mb-4">
+          <i class="bi bi-database-fill-up text-warning" style="font-size:4rem"></i>
+          <h5 class="mt-3">Restore Data</h5>
+        </div>
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle-fill me-2"></i>
+          <strong>Warning:</strong> Restoring a backup will replace all current data. The current database will be saved as a pre-restore backup automatically.
+        </div>
+        <form method="post" action="{{ url_for('backup_restore') }}" enctype="multipart/form-data">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Select Backup File (.db)</label>
+            <input type="file" name="backup_file" class="form-control" accept=".db" required>
+          </div>
+          <button type="submit" class="btn btn-warning w-100" onclick="return confirm('This will replace all current data. Continue?')">
+            <i class="bi bi-upload me-2"></i>Restore Backup
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+  <div class="col-12">
+    <div class="card">
+      <div class="card-body">
+        <h6 class="fw-bold mb-3"><i class="bi bi-shield-check me-2 text-primary"></i>Backup Best Practices</h6>
+        <div class="row">
+          <div class="col-md-4">
+            <div class="d-flex gap-3">
+              <i class="bi bi-calendar-check text-success fs-4"></i>
+              <div><strong>Regular Backups</strong><p class="text-muted small mb-0">Download a backup at least once a week to prevent data loss.</p></div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex gap-3">
+              <i class="bi bi-hdd-fill text-primary fs-4"></i>
+              <div><strong>Multiple Copies</strong><p class="text-muted small mb-0">Store backups in multiple locations (USB, cloud, email).</p></div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="d-flex gap-3">
+              <i class="bi bi-lock-fill text-warning fs-4"></i>
+              <div><strong>Keep Secure</strong><p class="text-muted small mb-0">Keep backup files secure as they contain sensitive student data.</p></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

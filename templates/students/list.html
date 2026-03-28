@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block page_title %}Students{% endblock %}
+{% block content %}
+<div class="card mb-4 no-print">
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-md-4">
+        <label class="form-label">Search</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control" placeholder="Name, Roll #, Phone..." value="{{ q }}">
+        </div>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Department</label>
+        <select name="dept_id" class="form-select">
+          <option value="">All Departments</option>
+          {% for d in departments %}
+          <option value="{{ d.id }}" {% if dept_id == d.id|string %}selected{% endif %}>{{ d.name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label">Status</label>
+        <select name="status" class="form-select">
+          <option value="">All</option>
+          <option value="Active" {% if status == 'Active' %}selected{% endif %}>Active</option>
+          <option value="Inactive" {% if status == 'Inactive' %}selected{% endif %}>Inactive</option>
+          <option value="Graduated" {% if status == 'Graduated' %}selected{% endif %}>Graduated</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <button type="submit" class="btn btn-primary me-2"><i class="bi bi-search me-1"></i>Search</button>
+        <a href="{{ url_for('students') }}" class="btn btn-outline-secondary me-2"><i class="bi bi-x-lg"></i></a>
+        <a href="{{ url_for('print_list') }}{% if dept_id %}?dept_id={{ dept_id }}{% endif %}" target="_blank" class="btn btn-outline-info"><i class="bi bi-printer me-1"></i>Print</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-people-fill me-2 text-primary"></i>
+      Students List <span class="badge bg-primary ms-2">{{ students|length }}</span>
+    </h6>
+    <a href="{{ url_for('add_student') }}" class="btn btn-primary btn-sm no-print"><i class="bi bi-plus-lg me-1"></i>Add Student</a>
+  </div>
+  <div class="card-body p-0">
+    {% if students %}
+    <div class="table-responsive">
+      <table class="table table-hover mb-0">
+        <thead>
+          <tr>
+            <th>#</th><th>Photo</th><th>Roll #</th><th>Name</th><th>Father Name</th>
+            <th>Gender</th><th>Department</th><th>Phone</th><th>Status</th><th class="no-print">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for s in students %}
+          <tr>
+            <td class="text-muted small">{{ loop.index }}</td>
+            <td>
+              {% if s.photo %}
+              <img src="{{ url_for('static', filename='uploads/' + s.photo) }}" class="student-photo">
+              {% else %}
+              <div class="student-photo bg-secondary d-inline-flex align-items-center justify-content-center text-white rounded-circle"><i class="bi bi-person"></i></div>
+              {% endif %}
+            </td>
+            <td><code class="text-primary">{{ s.roll_number }}</code></td>
+            <td class="fw-semibold">{{ s.full_name }}</td>
+            <td class="text-muted">{{ s.father_name or '-' }}</td>
+            <td>
+              <span class="badge {% if s.gender == 'Male' %}bg-info{% elif s.gender == 'Female' %}bg-success{% else %}bg-secondary{% endif %}"
+                {{ s.gender }}
+              </span>
+            </td>
+            <td><small>{{ s.department.name[:25] if s.department else '-' }}</small></td>
+            <td class="text-muted">{{ s.phone or '-' }}</td>
+            <td><span class="badge {{ 'badge-active' if s.status=='Active' else 'badge-inactive' }}">{{ s.status }}</span></td>
+            <td class="no-print">
+              <a href="{{ url_for('view_student', sid=s.id) }}" class="btn btn-sm btn-outline-primary" title="View"><i class="bi bi-eye"></i></a>
+              <a href="{{ url_for('edit_student', sid=s.id) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+              <form method="post" action="{{ url_for('delete_student', sid=s.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ s.full_name }}?')">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+              </form>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-people fs-1"></i>
+      <p class="mt-3">No students found. <a href="{{ url_for('add_student') }}">Add the first student</a></p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

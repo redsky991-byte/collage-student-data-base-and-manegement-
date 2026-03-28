@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block page_title %}Add New Student{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header bg-white border-bottom py-3">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Add New Student</h6>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-4">
+        <!-- Personal Information -->
+        <div class="col-12"><h6 class="text-primary border-bottom pb-2"><i class="bi bi-person me-2"></i>Personal Information</h6></div>
+
+        <div class="col-md-4">
+          <label class="form-label">Roll Number <span class="text-danger">*</span></label>
+          <input type="text" name="roll_number" class="form-control" required placeholder="e.g. CS-2024-001">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Full Name <span class="text-danger">*</span></label>
+          <input type="text" name="full_name" class="form-control" required placeholder="Student full name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Gender <span class="text-danger">*</span></label>
+          <select name="gender" class="form-select" required>
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Father's Name</label>
+          <input type="text" name="father_name" class="form-control" placeholder="Father's name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Mother's Name</label>
+          <input type="text" name="mother_name" class="form-control" placeholder="Mother's name">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" name="date_of_birth" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CNIC / B-Form Number</label>
+          <input type="text" name="cnic_number" class="form-control" placeholder="XXXXX-XXXXXXX-X">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone Number</label>
+          <input type="text" name="phone" class="form-control" placeholder="03XX-XXXXXXX">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email Address</label>
+          <input type="email" name="email" class="form-control" placeholder="student@email.com">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Home Address</label>
+          <textarea name="address" class="form-control" rows="2" placeholder="Full residential address"></textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Student Photo</label>
+          <input type="file" name="photo" class="form-control" accept="image/*" onchange="previewPhoto(this)">
+          <img id="photo-preview" src="" class="mt-2 rounded" style="max-height:100px;display:none">
+        </div>
+
+        <!-- Academic Information -->
+        <div class="col-12 mt-2"><h6 class="text-primary border-bottom pb-2"><i class="bi bi-mortarboard me-2"></i>Academic Information</h6></div>
+
+        <div class="col-md-4">
+          <label class="form-label">Department / Class <span class="text-danger">*</span></label>
+          <select name="department_id" id="dept-select" class="form-select" required onchange="loadSubjects(this.value)">
+            <option value="">Select Department</option>
+            {% for d in departments %}
+            <option value="{{ d.id }}">{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Class / Section / Course</label>
+          <input type="text" name="class_name" class="form-control" placeholder="e.g. 1st Year, Section A">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Admission Date</label>
+          <input type="date" name="admission_date" class="form-control">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="Active" selected>Active</option>
+            <option value="Inactive">Inactive</option>
+            <option value="Graduated">Graduated</option>
+            <option value="Suspended">Suspended</option>
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Enrolled Subjects</label>
+          <div id="subjects-container" class="border rounded p-3 bg-light">
+            <p class="text-muted mb-0"><i class="bi bi-arrow-up me-1"></i>Select a department to load subjects</p>
+          </div>
+        </div>
+
+        <div class="col-12 mt-3">
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i>Save Student</button>
+          <a href="{{ url_for('students') }}" class="btn btn-outline-secondary ms-2"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function previewPhoto(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var preview = document.getElementById('photo-preview');
+      preview.src = e.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function loadSubjects(deptId) {
+  var container = document.getElementById('subjects-container');
+  if (!deptId) {
+    container.innerHTML = '<p class="text-muted mb-0"><i class="bi bi-arrow-up me-1"></i>Select a department to load subjects</p>';
+    return;
+  }
+  container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm text-primary"></div> Loading...</div>';
+  fetch('/api/subjects/' + deptId)
+    .then(r => r.json())
+    .then(data => {
+      if (data.length === 0) {
+        container.innerHTML = '<p class="text-muted mb-0">No subjects available for this department.</p>';
+        return;
+      }
+      var html = '<div class="row g-2">';
+      data.forEach(function(s) {
+        html += '<div class="col-md-4"><div class="form-check">' +
+          '<input class="form-check-input" type="checkbox" name="subjects" value="' + s.id + '" id="sub' + s.id + '">' +
+          '<label class="form-check-label" for="sub' + s.id + '">' + s.name + '</label>' +
+          '</div></div>';
+      });
+      html += '</div>';
+      container.innerHTML = html;
+    });
+}
+
+// Set today as default admission date
+document.querySelector('input[name="admission_date"]').valueAsDate = new Date();
+</script>
+{% endblock %}
