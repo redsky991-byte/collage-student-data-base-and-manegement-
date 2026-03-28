@@ -84,6 +84,14 @@
           <input type="date" name="admission_date" class="form-control" value="{{ student.admission_date or '' }}">
         </div>
         <div class="col-md-4">
+          <label class="form-label">Admission Fee (Rs)</label>
+          <input type="number" name="admission_fee" class="form-control" min="0" step="0.01" value="{{ student.admission_fee or 0 }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Monthly Fee (Rs)</label>
+          <input type="number" name="monthly_fee" class="form-control" min="0" step="0.01" value="{{ student.monthly_fee or 0 }}">
+        </div>
+        <div class="col-md-4">
           <label class="form-label">Status</label>
           <select name="status" class="form-select">
             <option value="Active" {% if student.status == 'Active' %}selected{% endif %}>Active</option>

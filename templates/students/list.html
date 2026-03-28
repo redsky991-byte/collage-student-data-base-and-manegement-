@@ -70,7 +70,7 @@
             <td class="fw-semibold">{{ s.full_name }}</td>
             <td class="text-muted">{{ s.father_name or '-' }}</td>
             <td>
-              <span class="badge {% if s.gender == 'Male' %}bg-info{% elif s.gender == 'Female' %}bg-success{% else %}bg-secondary{% endif %}"
+              <span class="badge {% if s.gender == 'Male' %}bg-info{% elif s.gender == 'Female' %}bg-success{% else %}bg-secondary{% endif %}">
                 {{ s.gender }}
               </span>
             </td>
@@ -79,6 +79,7 @@
             <td><span class="badge {{ 'badge-active' if s.status=='Active' else 'badge-inactive' }}">{{ s.status }}</span></td>
             <td class="no-print">
               <a href="{{ url_for('view_student', sid=s.id) }}" class="btn btn-sm btn-outline-primary" title="View"><i class="bi bi-eye"></i></a>
+              <a href="{{ url_for('id_card', sid=s.id) }}?autoprint=1" class="btn btn-sm btn-outline-success" target="_blank" title="Print ID Card"><i class="bi bi-person-badge"></i></a>
               <a href="{{ url_for('edit_student', sid=s.id) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
               <form method="post" action="{{ url_for('delete_student', sid=s.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ s.full_name }}?')">
                 <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>

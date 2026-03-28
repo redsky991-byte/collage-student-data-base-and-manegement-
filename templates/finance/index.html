@@ -1,0 +1,162 @@
+{% extends 'base.html' %}
+{% block page_title %}Finance — Credits &amp; Debits{% endblock %}
+{% block content %}
+
+<!-- Summary Cards -->
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#059669,#10b981)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_credits) }}</div><div class="stat-label">Total Credits (Income)</div></div>
+        <i class="bi bi-arrow-up-circle-fill stat-icon"></i>
+      </div>
+      <small class="text-white-50 mt-1 d-block">Fees: Rs {{ '{:,.0f}'.format(fee_income) }} &nbsp;|&nbsp; Other: Rs {{ '{:,.0f}'.format(credit_other) }}</small>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#f87171)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_debits) }}</div><div class="stat-label">Total Debits (Expenses)</div></div>
+        <i class="bi bi-arrow-down-circle-fill stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,{% if balance >= 0 %}#1a3a6b,#2563eb{% else %}#7f1d1d,#dc2626{% endif %})">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(balance|abs) }}</div>
+          <div class="stat-label">Net Balance ({% if balance >= 0 %}Profit{% else %}Deficit{% endif %})</div>
+        </div>
+        <i class="bi bi-{% if balance >= 0 %}graph-up-arrow{% else %}graph-down-arrow{% endif %} stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#be185d,#f472b6)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(monthly_salary_total) }}</div><div class="stat-label">Monthly Salary Liability</div></div>
+        <i class="bi bi-wallet2 stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Add Transaction Form -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Add Transaction</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('add_expense') }}">
+          <div class="mb-3">
+            <label class="form-label">Type <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3">
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" value="credit" id="t_credit" checked>
+                <label class="form-check-label text-success fw-semibold" for="t_credit"><i class="bi bi-arrow-up-circle me-1"></i>Credit</label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="type" value="debit" id="t_debit">
+                <label class="form-check-label text-danger fw-semibold" for="t_debit"><i class="bi bi-arrow-down-circle me-1"></i>Debit</label>
+              </div>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Category <span class="text-danger">*</span></label>
+            <input type="text" name="category" class="form-control" required
+                   placeholder="e.g. Teacher Salary, Utility Bill, Donation"
+                   list="cat-list">
+            <datalist id="cat-list">
+              <option value="Teacher Salary">
+              <option value="Utility Bill">
+              <option value="Maintenance">
+              <option value="Books & Stationery">
+              <option value="Donation / Grant">
+              <option value="Other Income">
+              <option value="Other Expense">
+            </datalist>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (Rs) <span class="text-danger">*</span></label>
+            <input type="number" name="amount" class="form-control" min="0.01" step="0.01" required placeholder="0.00">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Date</label>
+            <input type="date" name="date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="description" class="form-control" rows="2" placeholder="Optional details"></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save me-2"></i>Add Transaction</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ledger Table -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-journal-text me-2 text-primary"></i>Transaction Ledger</h6>
+      </div>
+      <div class="card-body p-0">
+        {% if expenses %}
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Date</th><th>Type</th><th>Category</th><th>Amount</th><th>Description</th><th class="no-print">Del</th></tr>
+          </thead>
+          <tbody>
+            {% set running = namespace(bal=0) %}
+            {% for e in expenses %}
+            <tr>
+              <td class="small">{{ e.date or e.created_at.strftime('%d %b %Y') }}</td>
+              <td>
+                {% if e.type == 'credit' %}
+                <span class="badge bg-success"><i class="bi bi-arrow-up-circle me-1"></i>Credit</span>
+                {% else %}
+                <span class="badge bg-danger"><i class="bi bi-arrow-down-circle me-1"></i>Debit</span>
+                {% endif %}
+              </td>
+              <td class="fw-semibold small">{{ e.category }}</td>
+              <td class="fw-bold {% if e.type == 'credit' %}text-success{% else %}text-danger{% endif %}">
+                {% if e.type == 'credit' %}+{% else %}-{% endif %}Rs {{ '{:,.0f}'.format(e.amount) }}
+              </td>
+              <td class="small text-muted">{{ e.description or '' }}</td>
+              <td class="no-print">
+                <form method="post" action="{{ url_for('delete_expense', eid=e.id) }}" onsubmit="return confirm('Delete this transaction?')">
+                  <button class="btn btn-sm btn-outline-danger"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-journal-x fs-1"></i>
+          <p class="mt-2">No transactions yet. Use the form to add credits or debits.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Fee Income breakdown note -->
+    <div class="alert alert-info mt-3 small">
+      <i class="bi bi-info-circle-fill me-2"></i>
+      <strong>Note:</strong> Fee collections from the <a href="{{ url_for('fees') }}">Monthly Fees</a> module
+      are automatically included in <em>Total Credits</em> above (Rs {{ '{:,.0f}'.format(fee_income) }}).
+      Add other income/expenses using the form on the left.
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelector('input[name="date"]').valueAsDate = new Date();
+</script>
+{% endblock %}

@@ -86,15 +86,35 @@ class Student(db.Model):
 class Teacher(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(200), nullable=False)
+    gender = db.Column(db.String(20))
+    date_of_birth = db.Column(db.String(20))
+    cnic_number = db.Column(db.String(20))
     phone = db.Column(db.String(20))
     email = db.Column(db.String(200))
+    address = db.Column(db.Text)
     qualification = db.Column(db.String(200))
-    subject = db.Column(db.String(200))
+    experience_years = db.Column(db.Integer, default=0)
+    # free-text specialisation (e.g. "Mathematics, Physics")
+    subject = db.Column(db.String(300))
+    # JSON array of Subject IDs from the Subject table
+    teaching_subjects = db.Column(db.Text, default='[]')
     department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)
     monthly_salary = db.Column(db.Float, default=0.0)
     join_date = db.Column(db.String(20))
+    photo = db.Column(db.String(300), default='')
     status = db.Column(db.String(20), default='Active')
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    @property
+    def age(self):
+        if not self.date_of_birth:
+            return None
+        try:
+            dob = datetime.strptime(self.date_of_birth, '%Y-%m-%d')
+            today = datetime.today()
+            return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+        except ValueError:
+            return None
 
 class FeeRecord(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -118,6 +138,14 @@ class Expense(db.Model):
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# ── Jinja2 custom filters ─────────────────────────────────────────────────────
+@app.template_filter('fromjson')
+def fromjson_filter(value):
+    try:
+        return json.loads(value) if value else []
+    except (ValueError, TypeError):
+        return []
 
 def get_setting(key, default=''):
     s = Setting.query.filter_by(key=key).first()
@@ -197,19 +225,30 @@ def seed_default_data():
             'institute_email': '',
             'primary_color': '#1a3a6b',
             'secondary_color': '#e8f0fe',
+            'helpline_number': '',
+            'card_validity': '',
         }
         for k, v in defaults.items():
             db.session.add(Setting(key=k, value=v))
+        db.session.commit()
+    else:
+        # Ensure new keys exist for databases created before this version
+        for key, val in [('helpline_number', ''), ('card_validity', '')]:
+            if not Setting.query.filter_by(key=key).first():
+                db.session.add(Setting(key=key, value=val))
         db.session.commit()
 
 @app.context_processor
 def inject_settings():
     return {
-        'institute_name': get_setting('institute_name', 'College Management System'),
+        'institute_name':    get_setting('institute_name', 'College Management System'),
         'institute_tagline': get_setting('institute_tagline', 'Excellence in Education'),
         'institute_address': get_setting('institute_address', ''),
-        'primary_color': get_setting('primary_color', '#1a3a6b'),
-        'secondary_color': get_setting('secondary_color', '#e8f0fe'),
+        'institute_phone':   get_setting('institute_phone', ''),
+        'primary_color':     get_setting('primary_color', '#1a3a6b'),
+        'secondary_color':   get_setting('secondary_color', '#e8f0fe'),
+        'helpline_number':   get_setting('helpline_number', ''),
+        'card_validity':     get_setting('card_validity', ''),
     }
 
 @app.route('/')
@@ -426,7 +465,9 @@ def delete_subject(sid):
 @app.route('/settings', methods=['GET', 'POST'])
 def settings():
     if request.method == 'POST':
-        for key in ['institute_name', 'institute_tagline', 'institute_address', 'institute_phone', 'institute_email', 'primary_color', 'secondary_color']:
+        for key in ['institute_name', 'institute_tagline', 'institute_address',
+                    'institute_phone', 'institute_email', 'primary_color',
+                    'secondary_color', 'helpline_number', 'card_validity']:
             val = request.form.get(key, '')
             set_setting(key, val)
         flash('Settings saved!', 'success')
@@ -591,8 +632,12 @@ def teachers():
     teachers_list = Teacher.query.order_by(Teacher.name).all()
     total_salary = db.session.query(db.func.sum(Teacher.monthly_salary)).filter_by(status='Active').scalar() or 0
     departments = Department.query.all()
+    all_subjects = Subject.query.order_by(Subject.name).all()
+    subject_map = {str(s.id): s.name for s in all_subjects}
     return render_template('teachers/index.html',
-        teachers=teachers_list, total_salary=total_salary, departments=departments)
+        teachers=teachers_list, total_salary=total_salary,
+        departments=departments, all_subjects=all_subjects,
+        subject_map=subject_map)
 
 @app.route('/teachers/add', methods=['POST'])
 def add_teacher():
@@ -601,15 +646,30 @@ def add_teacher():
         flash('Teacher name is required!', 'danger')
         return redirect(url_for('teachers'))
     dept_id = request.form.get('department_id', '') or None
+    photo_filename = ''
+    if 'photo' in request.files:
+        photo = request.files['photo']
+        if photo and photo.filename and allowed_file(photo.filename):
+            ext = photo.filename.rsplit('.', 1)[1].lower()
+            filename = secure_filename(f"teacher_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.{ext}")
+            photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            photo_filename = filename
     db.session.add(Teacher(
         name=name,
+        gender=request.form.get('gender', ''),
+        date_of_birth=request.form.get('date_of_birth', ''),
+        cnic_number=request.form.get('cnic_number', ''),
         phone=request.form.get('phone', ''),
         email=request.form.get('email', ''),
+        address=request.form.get('address', ''),
         qualification=request.form.get('qualification', ''),
+        experience_years=int(request.form.get('experience_years', 0) or 0),
         subject=request.form.get('subject', ''),
+        teaching_subjects=json.dumps(request.form.getlist('teaching_subjects')),
         department_id=int(dept_id) if dept_id else None,
         monthly_salary=float(request.form.get('monthly_salary', 0) or 0),
         join_date=request.form.get('join_date', ''),
+        photo=photo_filename,
         status=request.form.get('status', 'Active'),
     ))
     db.session.commit()
@@ -620,21 +680,41 @@ def add_teacher():
 def edit_teacher(tid):
     teacher = Teacher.query.get_or_404(tid)
     departments = Department.query.all()
+    all_subjects = Subject.query.order_by(Subject.name).all()
     if request.method == 'POST':
-        teacher.name           = request.form.get('name', '').strip()
-        teacher.phone          = request.form.get('phone', '')
-        teacher.email          = request.form.get('email', '')
-        teacher.qualification  = request.form.get('qualification', '')
-        teacher.subject        = request.form.get('subject', '')
+        teacher.name             = request.form.get('name', '').strip()
+        teacher.gender           = request.form.get('gender', '')
+        teacher.date_of_birth    = request.form.get('date_of_birth', '')
+        teacher.cnic_number      = request.form.get('cnic_number', '')
+        teacher.phone            = request.form.get('phone', '')
+        teacher.email            = request.form.get('email', '')
+        teacher.address          = request.form.get('address', '')
+        teacher.qualification    = request.form.get('qualification', '')
+        teacher.experience_years = int(request.form.get('experience_years', 0) or 0)
+        teacher.subject          = request.form.get('subject', '')
+        teacher.teaching_subjects = json.dumps(request.form.getlist('teaching_subjects'))
         dept_id = request.form.get('department_id', '') or None
-        teacher.department_id  = int(dept_id) if dept_id else None
-        teacher.monthly_salary = float(request.form.get('monthly_salary', 0) or 0)
-        teacher.join_date      = request.form.get('join_date', '')
-        teacher.status         = request.form.get('status', 'Active')
+        teacher.department_id    = int(dept_id) if dept_id else None
+        teacher.monthly_salary   = float(request.form.get('monthly_salary', 0) or 0)
+        teacher.join_date        = request.form.get('join_date', '')
+        teacher.status           = request.form.get('status', 'Active')
+        if 'photo' in request.files:
+            photo = request.files['photo']
+            if photo and photo.filename and allowed_file(photo.filename):
+                if teacher.photo:
+                    old = os.path.join(app.config['UPLOAD_FOLDER'], teacher.photo)
+                    if os.path.exists(old):
+                        os.remove(old)
+                filename = secure_filename(f"teacher_{tid}_{datetime.now().strftime('%Y%m%d%H%M%S%f')}.{photo.filename.rsplit('.',1)[1].lower()}")
+                photo.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+                teacher.photo = filename
         db.session.commit()
         flash('Teacher updated successfully!', 'success')
         return redirect(url_for('teachers'))
-    return render_template('teachers/edit.html', teacher=teacher, departments=departments)
+    subject_ids = json.loads(teacher.teaching_subjects) if teacher.teaching_subjects else []
+    return render_template('teachers/edit.html', teacher=teacher,
+                           departments=departments, all_subjects=all_subjects,
+                           subject_ids=[str(x) for x in subject_ids])
 
 @app.route('/teachers/<int:tid>/delete', methods=['POST'])
 def delete_teacher(tid):
@@ -683,6 +763,12 @@ def delete_expense(eid):
     db.session.commit()
     flash('Transaction deleted!', 'success')
     return redirect(url_for('finance'))
+
+# ── Student ID Card ───────────────────────────────────────────────────────────
+@app.route('/students/<int:sid>/id-card')
+def id_card(sid):
+    student = Student.query.get_or_404(sid)
+    return render_template('students/id_card.html', student=student, now=datetime.now())
 
 if __name__ == '__main__':
     with app.app_context():

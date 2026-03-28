@@ -1,0 +1,116 @@
+{% extends 'base.html' %}
+{% block page_title %}Admissions{% endblock %}
+{% block content %}
+<div class="row g-3 mb-4">
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1a3a6b,#2563eb)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total }}</div><div class="stat-label">Total Students</div></div>
+        <i class="bi bi-people-fill stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#059669,#10b981)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ this_month }}</div><div class="stat-label">This Month ({{ current_period }})</div></div>
+        <i class="bi bi-calendar-check-fill stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ this_year }}</div><div class="stat-label">This Year</div></div>
+        <i class="bi bi-calendar3 stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-3 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#d97706,#f59e0b)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_admission_fees) }}</div><div class="stat-label">Admission Fees Collected</div></div>
+        <i class="bi bi-cash-coin stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom d-flex justify-content-between align-items-center py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Admissions</h6>
+        <a href="{{ url_for('add_student') }}" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg me-1"></i>New Admission</a>
+      </div>
+      <div class="card-body p-0">
+        {% if recent %}
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr><th>Photo</th><th>Roll #</th><th>Name</th><th>Department</th><th>Admission Date</th><th>Status</th><th class="no-print">Actions</th></tr>
+          </thead>
+          <tbody>
+            {% for s in recent %}
+            <tr>
+              <td>
+                {% if s.photo %}<img src="{{ url_for('uploaded_file', filename=s.photo) }}" class="student-photo">
+                {% else %}<div class="student-photo bg-secondary d-inline-flex align-items-center justify-content-center text-white rounded-circle"><i class="bi bi-person"></i></div>{% endif %}
+              </td>
+              <td><code>{{ s.roll_number }}</code></td>
+              <td class="fw-semibold">{{ s.full_name }}</td>
+              <td><span class="badge bg-primary">{{ s.department.name[:18] if s.department else '-' }}</span></td>
+              <td>{{ s.admission_date or s.created_at.strftime('%d %b %Y') }}</td>
+              <td><span class="badge {{ 'badge-active' if s.status=='Active' else 'badge-inactive' }}">{{ s.status }}</span></td>
+              <td class="no-print">
+                <a href="{{ url_for('view_student', sid=s.id) }}" class="btn btn-sm btn-outline-primary" title="View"><i class="bi bi-eye"></i></a>
+                <a href="{{ url_for('id_card', sid=s.id) }}?autoprint=1" class="btn btn-sm btn-outline-success" target="_blank" title="ID Card"><i class="bi bi-person-badge"></i></a>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-inbox fs-1"></i>
+          <p class="mt-2">No admissions yet. <a href="{{ url_for('add_student') }}">Add first student</a></p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-4">
+    <div class="card mb-4">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-bar-chart-fill me-2 text-primary"></i>Students per Department</h6>
+      </div>
+      <div class="card-body p-3">
+        {% for ds in dept_stats %}
+        <div class="mb-3">
+          <div class="d-flex justify-content-between mb-1">
+            <small class="fw-semibold">{{ ds.name[:28] }}</small>
+            <span class="badge {% if ds.type == 'college' %}bg-primary{% else %}bg-success{% endif %}">{{ ds.count }}</span>
+          </div>
+          <div class="progress" style="height:6px">
+            <div class="progress-bar {% if ds.type == 'school' %}bg-success{% endif %}" style="width:{% if total > 0 %}{{ (ds.count / total * 100)|int }}{% else %}0{% endif %}%"></div>
+          </div>
+        </div>
+        {% endfor %}
+        {% if not dept_stats %}<p class="text-muted text-center small">No students enrolled yet</p>{% endif %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-lightning-fill me-2 text-warning"></i>Quick Actions</h6>
+      </div>
+      <div class="card-body d-grid gap-2">
+        <a href="{{ url_for('add_student') }}" class="btn btn-primary"><i class="bi bi-person-plus me-2"></i>New Admission</a>
+        <a href="{{ url_for('students') }}" class="btn btn-outline-secondary"><i class="bi bi-search me-2"></i>Search Students</a>
+        <a href="{{ url_for('print_list') }}" class="btn btn-outline-info" target="_blank"><i class="bi bi-printer me-2"></i>Print Student List</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
