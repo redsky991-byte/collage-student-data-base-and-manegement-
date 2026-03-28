@@ -22,6 +22,7 @@ env/
 # Uploaded files (runtime data)
 static/uploads/*
 !static/uploads/.gitkeep
+uploads/
 
 # Backups (runtime data)
 backups/*
@@ -30,6 +31,10 @@ backups/*
 # Environment / secrets
 .env
 .env.*
+
+# PyInstaller work files
+*.spec.bak
+warn-*.txt
 
 # IDE
 .vscode/

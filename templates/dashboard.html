@@ -51,7 +51,7 @@
             {% for s in recent_students %}
             <tr>
               <td>
-                {% if s.photo %}<img src="{{ url_for('static', filename='uploads/' + s.photo) }}" class="student-photo">
+                {% if s.photo %}<img src="{{ url_for('uploaded_file', filename=s.photo) }}" class="student-photo">
                 {% else %}<div class="student-photo bg-secondary d-inline-flex align-items-center justify-content-center text-white rounded-circle"><i class="bi bi-person"></i></div>{% endif %}
               </td>
               <td><code>{{ s.roll_number }}</code></td>

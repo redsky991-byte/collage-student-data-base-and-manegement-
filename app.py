@@ -1,23 +1,40 @@
 import os
+import sys
 import shutil
 import json
+import threading
+import time
+import webbrowser
 from datetime import datetime
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, send_from_directory, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.utils import secure_filename
 from sqlalchemy import or_
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
-BACKUP_FOLDER = os.path.join(BASE_DIR, 'backups')
+# ── Path detection (normal Python vs PyInstaller frozen exe) ─────────────────
+# BUNDLE_DIR  – read-only assets bundled into the exe (templates, static CSS)
+# APP_DIR     – writable directory next to the exe (database, uploads, backups)
+if getattr(sys, 'frozen', False):
+    BUNDLE_DIR = sys._MEIPASS
+    APP_DIR = os.path.dirname(sys.executable)
+else:
+    BUNDLE_DIR = os.path.abspath(os.path.dirname(__file__))
+    APP_DIR = BUNDLE_DIR
+
+UPLOAD_FOLDER = os.path.join(APP_DIR, 'uploads')
+BACKUP_FOLDER = os.path.join(APP_DIR, 'backups')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(BACKUP_FOLDER, exist_ok=True)
 
-app = Flask(__name__)
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BUNDLE_DIR, 'templates'),
+    static_folder=os.path.join(BUNDLE_DIR, 'static'),
+)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'college-mgmt-secret-2024')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'college.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(APP_DIR, 'college.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
@@ -378,7 +395,7 @@ def backup():
 
 @app.route('/backup/download')
 def backup_download():
-    db_path = os.path.join(BASE_DIR, 'college.db')
+    db_path = os.path.join(APP_DIR, 'college.db')
     timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     backup_name = f'college_backup_{timestamp}.db'
     backup_path = os.path.join(BACKUP_FOLDER, backup_name)
@@ -392,7 +409,7 @@ def backup_restore():
         return redirect(url_for('backup'))
     f = request.files['backup_file']
     if f and f.filename and f.filename.endswith('.db'):
-        db_path = os.path.join(BASE_DIR, 'college.db')
+        db_path = os.path.join(APP_DIR, 'college.db')
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         shutil.copy2(db_path, os.path.join(BACKUP_FOLDER, f'pre_restore_{timestamp}.db'))
         f.save(db_path)
@@ -404,6 +421,13 @@ def backup_restore():
 @app.route('/about')
 def about():
     return render_template('about.html')
+
+# Serve user-uploaded photos from the writable uploads directory.
+# This works both in normal Python mode and when packaged as a frozen exe,
+# where static/uploads inside the bundle is read-only.
+@app.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    return send_from_directory(UPLOAD_FOLDER, filename)
 
 @app.route('/students/<int:sid>/print')
 def print_student(sid):
@@ -434,6 +458,17 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
         seed_default_data()
-    debug_mode = os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     port = int(os.environ.get('PORT', 5000))
+    url = f'http://127.0.0.1:{port}'
+
+    def _open_browser():
+        time.sleep(1.5)
+        webbrowser.open(url)
+
+    # Only auto-open browser when running as a packaged exe or when not in
+    # development mode (so hot-reload doesn't open two browser tabs).
+    if getattr(sys, 'frozen', False) or os.environ.get('FLASK_DEBUG', 'false').lower() != 'true':
+        threading.Thread(target=_open_browser, daemon=True).start()
+
+    debug_mode = not getattr(sys, 'frozen', False) and os.environ.get('FLASK_DEBUG', 'false').lower() == 'true'
     app.run(debug=debug_mode, host='127.0.0.1', port=port)

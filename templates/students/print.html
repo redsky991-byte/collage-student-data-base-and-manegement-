@@ -27,7 +27,7 @@
     <div class="row">
       <div class="col-3 text-center">
         {% if student.photo %}
-        <img src="{{ url_for('static', filename='uploads/' + student.photo) }}" class="student-photo-print rounded">
+        <img src="{{ url_for('uploaded_file', filename=student.photo) }}" class="student-photo-print rounded">
         {% else %}
         <div class="bg-secondary text-white d-flex align-items-center justify-content-center rounded" style="width:100px;height:100px;font-size:3rem">&#x1F464;</div>
         {% endif %}
