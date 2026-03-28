@@ -77,7 +77,43 @@ class Student(db.Model):
     subjects = db.Column(db.Text)
     photo = db.Column(db.String(300), default='')
     admission_date = db.Column(db.String(20))
+    admission_fee = db.Column(db.Float, default=0.0)
+    monthly_fee = db.Column(db.Float, default=0.0)
     status = db.Column(db.String(20), default='Active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    fee_records = db.relationship('FeeRecord', backref='student', lazy=True, cascade='all, delete-orphan')
+
+class Teacher(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(200), nullable=False)
+    phone = db.Column(db.String(20))
+    email = db.Column(db.String(200))
+    qualification = db.Column(db.String(200))
+    subject = db.Column(db.String(200))
+    department_id = db.Column(db.Integer, db.ForeignKey('department.id'), nullable=True)
+    monthly_salary = db.Column(db.Float, default=0.0)
+    join_date = db.Column(db.String(20))
+    status = db.Column(db.String(20), default='Active')
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class FeeRecord(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    student_id = db.Column(db.Integer, db.ForeignKey('student.id'), nullable=False)
+    month = db.Column(db.String(20), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+    paid_date = db.Column(db.String(20))
+    status = db.Column(db.String(20), default='Paid')
+    notes = db.Column(db.Text)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+class Expense(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    type = db.Column(db.String(10), nullable=False)   # credit / debit
+    category = db.Column(db.String(100), nullable=False)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+    description = db.Column(db.Text)
+    date = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 def allowed_file(filename):
@@ -182,6 +218,9 @@ def dashboard():
     active_students = Student.query.filter_by(status='Active').count()
     total_depts = Department.query.count()
     total_subjects = Subject.query.count()
+    total_teachers = Teacher.query.filter_by(status='Active').count()
+    fee_collected = db.session.query(db.func.sum(FeeRecord.amount)).filter_by(status='Paid').scalar() or 0
+    monthly_salary_total = db.session.query(db.func.sum(Teacher.monthly_salary)).filter_by(status='Active').scalar() or 0
     recent_students = Student.query.order_by(Student.created_at.desc()).limit(5).all()
     college_depts = Department.query.filter_by(type='college').all()
     school_depts = Department.query.filter_by(type='school').all()
@@ -191,6 +230,8 @@ def dashboard():
     return render_template('dashboard.html',
         total_students=total_students, active_students=active_students,
         total_depts=total_depts, total_subjects=total_subjects,
+        total_teachers=total_teachers, fee_collected=fee_collected,
+        monthly_salary_total=monthly_salary_total,
         recent_students=recent_students, college_depts=college_depts,
         school_depts=school_depts, dept_stats=dept_stats)
 
@@ -245,6 +286,8 @@ def add_student():
             subjects=json.dumps(subjects_selected),
             photo=photo_filename,
             admission_date=request.form.get('admission_date', ''),
+            admission_fee=float(request.form.get('admission_fee', 0) or 0),
+            monthly_fee=float(request.form.get('monthly_fee', 0) or 0),
             status=request.form.get('status', 'Active'),
         )
         db.session.add(student)
@@ -295,6 +338,8 @@ def edit_student(sid):
             student.class_name = request.form.get('class_name', '')
             student.subjects = json.dumps(request.form.getlist('subjects'))
             student.admission_date = request.form.get('admission_date', '')
+            student.admission_fee = float(request.form.get('admission_fee', 0) or 0)
+            student.monthly_fee = float(request.form.get('monthly_fee', 0) or 0)
             student.status = request.form.get('status', 'Active')
             db.session.commit()
             flash('Student updated successfully!', 'success')
@@ -453,6 +498,191 @@ def print_list():
         if d:
             dept_name = d.name
     return render_template('students/print_list.html', students=students_list, dept_name=dept_name, status=status)
+
+# ── Admissions ────────────────────────────────────────────────────────────────
+@app.route('/admissions')
+def admissions():
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+    total = Student.query.count()
+    this_month_students = Student.query.filter(
+        db.extract('month', Student.created_at) == current_month,
+        db.extract('year', Student.created_at) == current_year,
+    ).count()
+    this_year_students = Student.query.filter(
+        db.extract('year', Student.created_at) == current_year,
+    ).count()
+    recent = Student.query.order_by(Student.created_at.desc()).limit(15).all()
+    dept_stats = []
+    for d in Department.query.all():
+        cnt = Student.query.filter_by(department_id=d.id).count()
+        if cnt > 0:
+            dept_stats.append({'name': d.name, 'type': d.type, 'count': cnt})
+    dept_stats.sort(key=lambda x: x['count'], reverse=True)
+    total_admission_fees = db.session.query(db.func.sum(Student.admission_fee)).scalar() or 0
+    return render_template('admissions/index.html',
+        total=total, this_month=this_month_students, this_year=this_year_students,
+        recent=recent, dept_stats=dept_stats,
+        total_admission_fees=total_admission_fees,
+        current_period=datetime.now().strftime('%B %Y'))
+
+# ── Monthly Fees ──────────────────────────────────────────────────────────────
+MONTHS = ['January','February','March','April','May','June',
+          'July','August','September','October','November','December']
+
+@app.route('/fees')
+def fees():
+    sel_month = request.args.get('month', '')
+    sel_year  = request.args.get('year', str(datetime.now().year))
+    sel_student = request.args.get('student_id', '')
+    sel_status  = request.args.get('status', '')
+    query = FeeRecord.query
+    if sel_month:
+        query = query.filter_by(month=sel_month)
+    if sel_year:
+        query = query.filter_by(year=int(sel_year))
+    if sel_student:
+        query = query.filter_by(student_id=int(sel_student))
+    if sel_status:
+        query = query.filter_by(status=sel_status)
+    records = query.order_by(FeeRecord.created_at.desc()).all()
+    total_collected = db.session.query(db.func.sum(FeeRecord.amount)).filter_by(status='Paid').scalar() or 0
+    total_pending   = db.session.query(db.func.sum(FeeRecord.amount)).filter_by(status='Pending').scalar() or 0
+    total_records   = FeeRecord.query.count()
+    active_students = Student.query.filter_by(status='Active').order_by(Student.full_name).all()
+    years = list(range(datetime.now().year, datetime.now().year - 6, -1))
+    return render_template('fees/index.html',
+        records=records, total_collected=total_collected,
+        total_pending=total_pending, total_records=total_records,
+        active_students=active_students, months=MONTHS, years=years,
+        sel_month=sel_month, sel_year=sel_year,
+        sel_student=sel_student, sel_status=sel_status)
+
+@app.route('/fees/add', methods=['POST'])
+def add_fee():
+    student_id  = request.form.get('student_id', '')
+    month       = request.form.get('month', '').strip()
+    year        = int(request.form.get('year', datetime.now().year) or datetime.now().year)
+    amount      = float(request.form.get('amount', 0) or 0)
+    paid_date   = request.form.get('paid_date', '')
+    status      = request.form.get('status', 'Paid')
+    notes       = request.form.get('notes', '')
+    if student_id and month and amount > 0:
+        db.session.add(FeeRecord(
+            student_id=int(student_id), month=month, year=year,
+            amount=amount, paid_date=paid_date, status=status, notes=notes))
+        db.session.commit()
+        flash('Fee record added successfully!', 'success')
+    else:
+        flash('Please fill in all required fields (student, month and amount)!', 'danger')
+    return redirect(url_for('fees'))
+
+@app.route('/fees/<int:fid>/delete', methods=['POST'])
+def delete_fee(fid):
+    record = FeeRecord.query.get_or_404(fid)
+    db.session.delete(record)
+    db.session.commit()
+    flash('Fee record deleted!', 'success')
+    return redirect(url_for('fees'))
+
+# ── Teachers & Salaries ───────────────────────────────────────────────────────
+@app.route('/teachers')
+def teachers():
+    teachers_list = Teacher.query.order_by(Teacher.name).all()
+    total_salary = db.session.query(db.func.sum(Teacher.monthly_salary)).filter_by(status='Active').scalar() or 0
+    departments = Department.query.all()
+    return render_template('teachers/index.html',
+        teachers=teachers_list, total_salary=total_salary, departments=departments)
+
+@app.route('/teachers/add', methods=['POST'])
+def add_teacher():
+    name = request.form.get('name', '').strip()
+    if not name:
+        flash('Teacher name is required!', 'danger')
+        return redirect(url_for('teachers'))
+    dept_id = request.form.get('department_id', '') or None
+    db.session.add(Teacher(
+        name=name,
+        phone=request.form.get('phone', ''),
+        email=request.form.get('email', ''),
+        qualification=request.form.get('qualification', ''),
+        subject=request.form.get('subject', ''),
+        department_id=int(dept_id) if dept_id else None,
+        monthly_salary=float(request.form.get('monthly_salary', 0) or 0),
+        join_date=request.form.get('join_date', ''),
+        status=request.form.get('status', 'Active'),
+    ))
+    db.session.commit()
+    flash('Teacher added successfully!', 'success')
+    return redirect(url_for('teachers'))
+
+@app.route('/teachers/<int:tid>/edit', methods=['GET', 'POST'])
+def edit_teacher(tid):
+    teacher = Teacher.query.get_or_404(tid)
+    departments = Department.query.all()
+    if request.method == 'POST':
+        teacher.name           = request.form.get('name', '').strip()
+        teacher.phone          = request.form.get('phone', '')
+        teacher.email          = request.form.get('email', '')
+        teacher.qualification  = request.form.get('qualification', '')
+        teacher.subject        = request.form.get('subject', '')
+        dept_id = request.form.get('department_id', '') or None
+        teacher.department_id  = int(dept_id) if dept_id else None
+        teacher.monthly_salary = float(request.form.get('monthly_salary', 0) or 0)
+        teacher.join_date      = request.form.get('join_date', '')
+        teacher.status         = request.form.get('status', 'Active')
+        db.session.commit()
+        flash('Teacher updated successfully!', 'success')
+        return redirect(url_for('teachers'))
+    return render_template('teachers/edit.html', teacher=teacher, departments=departments)
+
+@app.route('/teachers/<int:tid>/delete', methods=['POST'])
+def delete_teacher(tid):
+    teacher = Teacher.query.get_or_404(tid)
+    db.session.delete(teacher)
+    db.session.commit()
+    flash('Teacher deleted!', 'success')
+    return redirect(url_for('teachers'))
+
+# ── Finance (Credits & Debits) ────────────────────────────────────────────────
+@app.route('/finance')
+def finance():
+    fee_income    = db.session.query(db.func.sum(FeeRecord.amount)).filter_by(status='Paid').scalar() or 0
+    credit_other  = db.session.query(db.func.sum(Expense.amount)).filter_by(type='credit').scalar() or 0
+    total_credits = fee_income + credit_other
+    total_debits  = db.session.query(db.func.sum(Expense.amount)).filter_by(type='debit').scalar() or 0
+    balance       = total_credits - total_debits
+    monthly_salary_total = db.session.query(db.func.sum(Teacher.monthly_salary)).filter_by(status='Active').scalar() or 0
+    expenses      = Expense.query.order_by(Expense.created_at.desc()).all()
+    return render_template('finance/index.html',
+        fee_income=fee_income, credit_other=credit_other,
+        total_credits=total_credits, total_debits=total_debits,
+        balance=balance, monthly_salary_total=monthly_salary_total,
+        expenses=expenses)
+
+@app.route('/finance/add', methods=['POST'])
+def add_expense():
+    type_    = request.form.get('type', 'debit')
+    category = request.form.get('category', '').strip()
+    amount   = float(request.form.get('amount', 0) or 0)
+    desc     = request.form.get('description', '')
+    date_val = request.form.get('date', '')
+    if category and amount > 0:
+        db.session.add(Expense(type=type_, category=category, amount=amount,
+                               description=desc, date=date_val))
+        db.session.commit()
+        flash('Transaction added successfully!', 'success')
+    else:
+        flash('Category and amount are required!', 'danger')
+    return redirect(url_for('finance'))
+
+@app.route('/finance/<int:eid>/delete', methods=['POST'])
+def delete_expense(eid):
+    expense = Expense.query.get_or_404(eid)
+    db.session.delete(expense)
+    db.session.commit()
+    flash('Transaction deleted!', 'success')
+    return redirect(url_for('finance'))
 
 if __name__ == '__main__':
     with app.app_context():

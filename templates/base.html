@@ -79,12 +79,28 @@
       <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
         <i class="bi bi-speedometer2"></i> Dashboard
       </a>
+      <div class="nav-section">Admissions</div>
+      <a href="{{ url_for('admissions') }}" class="nav-link {% if request.endpoint == 'admissions' %}active{% endif %}">
+        <i class="bi bi-clipboard2-check-fill"></i> Admissions
+      </a>
+      <a href="{{ url_for('add_student') }}" class="nav-link {% if request.endpoint == 'add_student' %}active{% endif %}">
+        <i class="bi bi-person-plus-fill"></i> New Admission
+      </a>
       <div class="nav-section">Students</div>
       <a href="{{ url_for('students') }}" class="nav-link {% if request.endpoint in ['students','view_student','edit_student'] %}active{% endif %}">
         <i class="bi bi-people-fill"></i> All Students
       </a>
-      <a href="{{ url_for('add_student') }}" class="nav-link {% if request.endpoint == 'add_student' %}active{% endif %}">
-        <i class="bi bi-person-plus-fill"></i> Add Student
+      <div class="nav-section">Fees</div>
+      <a href="{{ url_for('fees') }}" class="nav-link {% if request.endpoint in ['fees','add_fee','delete_fee'] %}active{% endif %}">
+        <i class="bi bi-cash-coin"></i> Monthly Fees
+      </a>
+      <div class="nav-section">Teachers</div>
+      <a href="{{ url_for('teachers') }}" class="nav-link {% if 'teacher' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-person-badge-fill"></i> Teachers &amp; Salaries
+      </a>
+      <div class="nav-section">Finance</div>
+      <a href="{{ url_for('finance') }}" class="nav-link {% if 'finance' in request.endpoint or 'expense' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-graph-up-arrow"></i> Credits &amp; Debits
       </a>
       <div class="nav-section">Academic</div>
       <a href="{{ url_for('departments') }}" class="nav-link {% if 'department' in request.endpoint %}active{% endif %}">
