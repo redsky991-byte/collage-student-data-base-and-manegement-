@@ -1,0 +1,103 @@
+{% extends 'base.html' %}
+{% block page_title %}Student Profile{% endblock %}
+{% block content %}
+<div class="row g-4">
+  <div class="col-md-4">
+    <div class="card text-center">
+      <div class="card-body py-4">
+        {% if student.photo %}
+        <img src="{{ url_for('uploaded_file', filename=student.photo) }}" class="student-photo-lg mb-3">
+        {% else %}
+        <div class="student-photo-lg bg-secondary d-inline-flex align-items-center justify-content-center text-white mb-3" style="width:120px;height:120px;border-radius:50%">
+          <i class="bi bi-person fs-1"></i>
+        </div>
+        {% endif %}
+        <h5 class="fw-bold mb-1">{{ student.full_name }}</h5>
+        <p class="text-muted small mb-2">{{ student.department.name if student.department else '' }}</p>
+        <span class="badge {{ 'badge-active' if student.status=='Active' else 'badge-inactive' }} fs-6">{{ student.status }}</span>
+        <hr>
+        <div class="d-grid gap-2 no-print">
+          <a href="{{ url_for('id_card', sid=student.id) }}?autoprint=1" target="_blank" class="btn btn-success btn-sm"><i class="bi bi-person-badge me-2"></i>Print ID Card</a>
+          <a href="{{ url_for('print_student', sid=student.id) }}" target="_blank" class="btn btn-outline-info btn-sm"><i class="bi bi-printer me-2"></i>Print Profile</a>
+          <a href="{{ url_for('edit_student', sid=student.id) }}" class="btn btn-outline-warning btn-sm"><i class="bi bi-pencil me-2"></i>Edit Profile</a>
+          <form method="post" action="{{ url_for('delete_student', sid=student.id) }}" onsubmit="return confirm('Are you sure you want to delete this student?')">
+            <button type="submit" class="btn btn-outline-danger btn-sm w-100"><i class="bi bi-trash me-2"></i>Delete Student</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-info-circle me-2 text-primary"></i>Student Details</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <small class="text-muted d-block">Roll Number</small>
+            <strong><code class="text-primary fs-6">{{ student.roll_number }}</code></strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Gender</small>
+            <strong>{{ student.gender }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Father's Name</small>
+            <strong>{{ student.father_name or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Mother's Name</small>
+            <strong>{{ student.mother_name or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Date of Birth</small>
+            <strong>{{ student.date_of_birth or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">CNIC / B-Form</small>
+            <strong>{{ student.cnic_number or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Phone</small>
+            <strong>{{ student.phone or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Email</small>
+            <strong>{{ student.email or '-' }}</strong>
+          </div>
+          <div class="col-12">
+            <small class="text-muted d-block">Address</small>
+            <strong>{{ student.address or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Department</small>
+            <strong><span class="badge bg-primary">{{ student.department.name if student.department else '-' }}</span></strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Class / Section</small>
+            <strong>{{ student.class_name or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Admission Date</small>
+            <strong>{{ student.admission_date or '-' }}</strong>
+          </div>
+          <div class="col-md-6">
+            <small class="text-muted d-block">Record Added</small>
+            <strong>{{ student.created_at.strftime('%d %b %Y') if student.created_at else '-' }}</strong>
+          </div>
+          {% if subjects %}
+          <div class="col-12">
+            <small class="text-muted d-block mb-2">Enrolled Subjects</small>
+            {% for sub in subjects %}
+            <span class="badge bg-secondary me-1 mb-1">{{ sub.name }}</span>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <a href="{{ url_for('students') }}" class="btn btn-outline-secondary mt-3 no-print"><i class="bi bi-arrow-left me-1"></i>Back to Students</a>
+  </div>
+</div>
+{% endblock %}

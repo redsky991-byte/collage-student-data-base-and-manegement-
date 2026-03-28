@@ -1,0 +1,187 @@
+{% extends 'base.html' %}
+{% block page_title %}Monthly Fees{% endblock %}
+{% block content %}
+
+<!-- Stats Row -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#059669,#10b981)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_collected) }}</div><div class="stat-label">Total Collected</div></div>
+        <i class="bi bi-cash-coin stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#dc2626,#f87171)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_pending) }}</div><div class="stat-label">Total Pending</div></div>
+        <i class="bi bi-hourglass-split stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#1a3a6b,#2563eb)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ total_records }}</div><div class="stat-label">Fee Records</div></div>
+        <i class="bi bi-receipt stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Add Fee Form -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle-fill me-2 text-primary"></i>Record Fee Payment</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('add_fee') }}">
+          <div class="mb-3">
+            <label class="form-label">Student <span class="text-danger">*</span></label>
+            <select name="student_id" class="form-select" required>
+              <option value="">-- Select Student --</option>
+              {% for s in active_students %}
+              <option value="{{ s.id }}" {% if sel_student == s.id|string %}selected{% endif %}>
+                {{ s.full_name }} ({{ s.roll_number }})
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label">Month <span class="text-danger">*</span></label>
+              <select name="month" class="form-select" required>
+                <option value="">Month</option>
+                {% for m in months %}
+                <option value="{{ m }}" {% if sel_month == m %}selected{% endif %}>{{ m }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="col-5">
+              <label class="form-label">Year</label>
+              <select name="year" class="form-select">
+                {% for y in years %}
+                <option value="{{ y }}" {% if sel_year == y|string %}selected{% endif %}>{{ y }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Amount (Rs) <span class="text-danger">*</span></label>
+            <input type="number" name="amount" class="form-control" min="1" step="0.01" required placeholder="0.00">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Payment Date</label>
+            <input type="date" name="paid_date" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Status</label>
+            <select name="status" class="form-select">
+              <option value="Paid">Paid</option>
+              <option value="Pending">Pending</option>
+              <option value="Partial">Partial</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Notes</label>
+            <input type="text" name="notes" class="form-control" placeholder="Optional note">
+          </div>
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save me-2"></i>Save Record</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Records Table -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+          <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i>Fee Records</h6>
+          <!-- Filter form -->
+          <form method="get" class="d-flex gap-2 flex-wrap align-items-center">
+            <select name="month" class="form-select form-select-sm" style="width:120px">
+              <option value="">All Months</option>
+              {% for m in months %}
+              <option value="{{ m }}" {% if sel_month == m %}selected{% endif %}>{{ m }}</option>
+              {% endfor %}
+            </select>
+            <select name="year" class="form-select form-select-sm" style="width:90px">
+              {% for y in years %}
+              <option value="{{ y }}" {% if sel_year == y|string %}selected{% endif %}>{{ y }}</option>
+              {% endfor %}
+            </select>
+            <select name="status" class="form-select form-select-sm" style="width:110px">
+              <option value="">All Status</option>
+              <option value="Paid" {% if sel_status=='Paid' %}selected{% endif %}>Paid</option>
+              <option value="Pending" {% if sel_status=='Pending' %}selected{% endif %}>Pending</option>
+              <option value="Partial" {% if sel_status=='Partial' %}selected{% endif %}>Partial</option>
+            </select>
+            <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-funnel"></i></button>
+            <a href="{{ url_for('fees') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg"></i></a>
+          </form>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        {% if records %}
+        <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Student</th>
+              <th>Month/Year</th>
+              <th>Amount</th>
+              <th>Paid Date</th>
+              <th>Status</th>
+              <th>Notes</th>
+              <th class="no-print">Del</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for r in records %}
+            <tr>
+              <td class="text-muted small">{{ loop.index }}</td>
+              <td>
+                <div class="fw-semibold small">{{ r.student.full_name if r.student else '-' }}</div>
+                <code class="text-muted small">{{ r.student.roll_number if r.student else '' }}</code>
+              </td>
+              <td>{{ r.month }} {{ r.year }}</td>
+              <td class="fw-bold text-success">Rs {{ '{:,.0f}'.format(r.amount) }}</td>
+              <td class="small">{{ r.paid_date or '-' }}</td>
+              <td>
+                {% if r.status == 'Paid' %}<span class="badge badge-active">Paid</span>
+                {% elif r.status == 'Pending' %}<span class="badge badge-inactive">Pending</span>
+                {% else %}<span class="badge bg-warning text-dark">{{ r.status }}</span>{% endif %}
+              </td>
+              <td class="small text-muted">{{ r.notes or '' }}</td>
+              <td class="no-print">
+                <form method="post" action="{{ url_for('delete_fee', fid=r.id) }}" onsubmit="return confirm('Delete this fee record?')">
+                  <button class="btn btn-xs btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-receipt fs-1"></i>
+          <p class="mt-2">No fee records found.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+// Pre-fill today's date for the paid_date field
+document.querySelector('input[name="paid_date"]').valueAsDate = new Date();
+</script>
+{% endblock %}

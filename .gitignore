@@ -1,0 +1,47 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+env/
+.venv/
+
+# Database (generated at runtime)
+*.db
+*.sqlite
+*.sqlite3
+
+# Uploaded files (runtime data)
+static/uploads/*
+!static/uploads/.gitkeep
+uploads/
+
+# Backups (runtime data)
+backups/*
+!backups/.gitkeep
+
+# Environment / secrets
+.env
+.env.*
+
+# PyInstaller work files
+*.spec.bak
+warn-*.txt
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

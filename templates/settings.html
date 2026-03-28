@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block page_title %}Settings{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-gear-fill me-2 text-primary"></i>System Settings</h6>
+      </div>
+      <div class="card-body">
+        <form method="post">
+          <h6 class="text-primary border-bottom pb-2 mb-3"><i class="bi bi-building me-2"></i>Institute Information</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-6">
+              <label class="form-label">Institute / School / College Name <span class="text-danger">*</span></label>
+              <input type="text" name="institute_name" class="form-control" value="{{ s.get('institute_name', '') }}" required>
+              <small class="text-muted">This name appears in the sidebar, headers, and print documents.</small>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Tagline / Motto</label>
+              <input type="text" name="institute_tagline" class="form-control" value="{{ s.get('institute_tagline', '') }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">Address / Website</label>
+              <input type="text" name="institute_address" class="form-control" value="{{ s.get('institute_address', '') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Phone Number</label>
+              <input type="text" name="institute_phone" class="form-control" value="{{ s.get('institute_phone', '') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Email Address</label>
+              <input type="email" name="institute_email" class="form-control" value="{{ s.get('institute_email', '') }}">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Helpline Number <small class="text-muted">(shown on ID card)</small></label>
+              <input type="text" name="helpline_number" class="form-control" value="{{ s.get('helpline_number', '') }}" placeholder="e.g. 0300-1234567">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">ID Card Validity <small class="text-muted">(e.g. 2024–2025)</small></label>
+              <input type="text" name="card_validity" class="form-control" value="{{ s.get('card_validity', '') }}" placeholder="e.g. 2024–2025">
+            </div>
+          </div>
+
+          <h6 class="text-primary border-bottom pb-2 mb-3"><i class="bi bi-palette me-2"></i>Color Theme</h6>
+          <div class="row g-3 mb-4">
+            <div class="col-md-4">
+              <label class="form-label">Primary Color (Sidebar/Header)</label>
+              <div class="input-group">
+                <input type="color" name="primary_color" class="form-control form-control-color" value="{{ s.get('primary_color', '#1a3a6b') }}" style="width:60px">
+                <input type="text" id="primary_text" class="form-control" value="{{ s.get('primary_color', '#1a3a6b') }}" readonly>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Secondary Color (Table Headers)</label>
+              <div class="input-group">
+                <input type="color" name="secondary_color" class="form-control form-control-color" value="{{ s.get('secondary_color', '#e8f0fe') }}" style="width:60px">
+                <input type="text" id="secondary_text" class="form-control" value="{{ s.get('secondary_color', '#e8f0fe') }}" readonly>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">Quick Theme Presets</label>
+              <div class="d-flex gap-2 flex-wrap">
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="setTheme('#1a3a6b','#e8f0fe')">Navy Blue</button>
+                <button type="button" class="btn btn-sm btn-outline-success" onclick="setTheme('#1a5c38','#e6f4ea')">Forest Green</button>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="setTheme('#7f1d1d','#fef2f2')">Deep Red</button>
+                <button type="button" class="btn btn-sm btn-outline-dark" onclick="setTheme('#1e293b','#f1f5f9')">Slate Dark</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="d-flex gap-3">
+            <button type="submit" class="btn btn-primary px-5"><i class="bi bi-save me-2"></i>Save Settings</button>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+document.querySelector('input[name="primary_color"]').addEventListener('input', function() {
+  document.getElementById('primary_text').value = this.value;
+});
+document.querySelector('input[name="secondary_color"]').addEventListener('input', function() {
+  document.getElementById('secondary_text').value = this.value;
+});
+function setTheme(primary, secondary) {
+  document.querySelector('input[name="primary_color"]').value = primary;
+  document.querySelector('input[name="secondary_color"]').value = secondary;
+  document.getElementById('primary_text').value = primary;
+  document.getElementById('secondary_text').value = secondary;
+}
+</script>
+{% endblock %}

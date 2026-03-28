@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% block page_title %}Teachers & Salaries{% endblock %}
+{% block content %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#0369a1,#38bdf8)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ teachers|selectattr('status','eq','Active')|list|length }}</div><div class="stat-label">Active Teachers</div></div>
+        <i class="bi bi-person-badge-fill stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#be185d,#f472b6)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">Rs {{ '{:,.0f}'.format(total_salary) }}</div><div class="stat-label">Monthly Salary Bill</div></div>
+        <i class="bi bi-wallet2 stat-icon"></i>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-4 col-sm-6">
+    <div class="stat-card" style="background:linear-gradient(135deg,#7c3aed,#a78bfa)">
+      <div class="d-flex justify-content-between align-items-start">
+        <div><div class="stat-value">{{ teachers|length }}</div><div class="stat-label">Total Staff</div></div>
+        <i class="bi bi-people-fill stat-icon"></i>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <!-- Add Teacher Form -->
+  <div class="col-md-4">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-person-plus-fill me-2 text-primary"></i>Add New Teacher</h6>
+      </div>
+      <div class="card-body">
+        <form method="post" action="{{ url_for('add_teacher') }}" enctype="multipart/form-data">
+          <h6 class="text-primary border-bottom pb-2 mb-3"><i class="bi bi-person me-1"></i>Personal Info</h6>
+          <div class="mb-3">
+            <label class="form-label">Full Name <span class="text-danger">*</span></label>
+            <input type="text" name="name" class="form-control" required placeholder="Teacher full name">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Gender</label>
+              <select name="gender" class="form-select">
+                <option value="">Select</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+              </select>
+            </div>
+            <div class="col-6">
+              <label class="form-label">Date of Birth</label>
+              <input type="date" name="date_of_birth" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">CNIC Number</label>
+            <input type="text" name="cnic_number" class="form-control" placeholder="XXXXX-XXXXXXX-X">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <input type="text" name="phone" class="form-control" placeholder="03XX-XXXXXXX">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control" placeholder="teacher@email.com">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Address</label>
+            <textarea name="address" class="form-control" rows="2" placeholder="Residential address"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Photo</label>
+            <input type="file" name="photo" class="form-control" accept="image/*">
+          </div>
+
+          <h6 class="text-primary border-bottom pb-2 mb-3 mt-3"><i class="bi bi-mortarboard me-1"></i>Academic Info</h6>
+          <div class="mb-3">
+            <label class="form-label">Qualification</label>
+            <input type="text" name="qualification" class="form-control" placeholder="e.g. M.Sc, B.Ed, PhD">
+          </div>
+          <div class="row g-2 mb-3">
+            <div class="col-6">
+              <label class="form-label">Experience (Years)</label>
+              <input type="number" name="experience_years" class="form-control" min="0" placeholder="0">
+            </div>
+            <div class="col-6">
+              <label class="form-label">Join Date</label>
+              <input type="date" name="join_date" class="form-control">
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Specialisation (free text)</label>
+            <input type="text" name="subject" class="form-control" placeholder="e.g. Mathematics, Physics">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Teaching Subjects</label>
+            <div class="border rounded p-2 bg-light" style="max-height:160px;overflow-y:auto">
+              {% for sub in all_subjects %}
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="teaching_subjects"
+                       value="{{ sub.id }}" id="as_sub{{ sub.id }}">
+                <label class="form-check-label small" for="as_sub{{ sub.id }}">{{ sub.name }}</label>
+              </div>
+              {% endfor %}
+              {% if not all_subjects %}<p class="text-muted small mb-0">No subjects defined yet</p>{% endif %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Department</label>
+            <select name="department_id" class="form-select">
+              <option value="">All / None</option>
+              {% for d in departments %}
+              <option value="{{ d.id }}">{{ d.name }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <h6 class="text-primary border-bottom pb-2 mb-3 mt-3"><i class="bi bi-cash me-1"></i>Employment</h6>
+          <div class="row g-2 mb-3">
+            <div class="col-7">
+              <label class="form-label">Monthly Salary (Rs)</label>
+              <input type="number" name="monthly_salary" class="form-control" min="0" step="0.01" placeholder="0">
+            </div>
+            <div class="col-5">
+              <label class="form-label">Status</label>
+              <select name="status" class="form-select">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+                <option value="On Leave">On Leave</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100"><i class="bi bi-save me-2"></i>Add Teacher</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Teachers List -->
+  <div class="col-md-8">
+    <div class="card">
+      <div class="card-header bg-white border-bottom py-3">
+        <h6 class="mb-0 fw-bold"><i class="bi bi-list-ul me-2 text-primary"></i>All Teachers ({{ teachers|length }})</h6>
+      </div>
+      <div class="card-body p-0">
+        {% if teachers %}
+        <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Photo</th>
+              <th>Name</th>
+              <th>Age / Exp</th>
+              <th>Qualification</th>
+              <th>Subjects</th>
+              <th>Salary</th>
+              <th>Status</th>
+              <th class="no-print">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for t in teachers %}
+            <tr>
+              <td>
+                {% if t.photo %}
+                <img src="{{ url_for('uploaded_file', filename=t.photo) }}" class="student-photo" title="{{ t.name }}">
+                {% else %}
+                <div class="student-photo bg-info d-inline-flex align-items-center justify-content-center text-white rounded-circle">
+                  <i class="bi bi-person-badge"></i>
+                </div>
+                {% endif %}
+              </td>
+              <td>
+                <div class="fw-semibold">{{ t.name }}</div>
+                <small class="text-muted">{{ t.phone or '' }}</small>
+                {% if t.department %}<div><span class="badge bg-secondary small">{{ t.department.name[:20] }}</span></div>{% endif %}
+              </td>
+              <td class="small">
+                {% if t.age %}<div>Age: <strong>{{ t.age }}</strong></div>{% endif %}
+                {% if t.experience_years %}<div>Exp: <strong>{{ t.experience_years }} yr{% if t.experience_years != 1 %}s{% endif %}</strong></div>{% endif %}
+                {% if t.gender %}<div class="text-muted">{{ t.gender }}</div>{% endif %}
+              </td>
+              <td class="small">{{ t.qualification or '-' }}</td>
+              <td class="small">
+                {% if t.subject %}<div class="text-muted">{{ t.subject }}</div>{% endif %}
+                {% if t.teaching_subjects and t.teaching_subjects != '[]' %}
+                  {% set sids = t.teaching_subjects|fromjson %}
+                  {% for sid in sids[:3] %}
+                    <span class="badge bg-light text-dark border">{{ subject_map.get(sid|string, 'Sub#' ~ sid) }}</span>
+                  {% endfor %}
+                  {% if sids|length > 3 %}<span class="text-muted small"> +{{ sids|length - 3 }} more</span>{% endif %}
+                {% endif %}
+              </td>
+              <td class="fw-bold text-success small">Rs {{ '{:,.0f}'.format(t.monthly_salary) }}</td>
+              <td>
+                {% if t.status == 'Active' %}<span class="badge badge-active">Active</span>
+                {% elif t.status == 'On Leave' %}<span class="badge bg-warning text-dark">On Leave</span>
+                {% else %}<span class="badge badge-inactive">{{ t.status }}</span>{% endif %}
+              </td>
+              <td class="no-print">
+                <a href="{{ url_for('edit_teacher', tid=t.id) }}" class="btn btn-sm btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                <form method="post" action="{{ url_for('delete_teacher', tid=t.id) }}" class="d-inline" onsubmit="return confirm('Delete {{ t.name }}?')">
+                  <button class="btn btn-sm btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+          <i class="bi bi-person-badge fs-1"></i>
+          <p class="mt-2">No teachers added yet. Use the form on the left.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

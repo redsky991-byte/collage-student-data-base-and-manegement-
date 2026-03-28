@@ -1,0 +1,2 @@
+# Build-time dependencies (not needed to run the app, only to build the exe)
+pyinstaller>=6.9.0

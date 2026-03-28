@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ institute_name }} - College Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    :root {
+      --primary: {{ primary_color }};
+      --secondary: {{ secondary_color }};
+    }
+    body { background: #f4f6fb; font-family: 'Segoe UI', sans-serif; }
+    .sidebar {
+      width: 260px; min-height: 100vh; background: var(--primary);
+      position: fixed; top: 0; left: 0; z-index: 100;
+      box-shadow: 2px 0 10px rgba(0,0,0,0.15);
+    }
+    .sidebar-brand {
+      padding: 20px 15px; background: rgba(0,0,0,0.2);
+      color: #fff; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .sidebar-brand h6 { font-size: 0.75rem; opacity: 0.8; margin: 0; }
+    .sidebar-brand h5 { font-size: 1rem; font-weight: 700; margin: 5px 0 0; word-break: break-word; }
+    .sidebar .nav-link {
+      color: rgba(255,255,255,0.85); padding: 12px 20px;
+      display: flex; align-items: center; gap: 10px;
+      border-left: 3px solid transparent; transition: all 0.2s;
+      text-decoration: none;
+    }
+    .sidebar .nav-link:hover, .sidebar .nav-link.active {
+      color: #fff; background: rgba(255,255,255,0.15);
+      border-left-color: #fff;
+    }
+    .sidebar .nav-link i { font-size: 1.1rem; width: 20px; }
+    .sidebar .nav-section {
+      font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;
+      color: rgba(255,255,255,0.5); padding: 15px 20px 5px;
+    }
+    .main-content { margin-left: 260px; min-height: 100vh; }
+    .topbar {
+      background: #fff; border-bottom: 1px solid #e2e8f0;
+      padding: 12px 25px; display: flex; align-items: center; justify-content: space-between;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .topbar-title { font-size: 1.15rem; font-weight: 600; color: #1e293b; }
+    .page-body { padding: 25px; }
+    .card { border: none; box-shadow: 0 2px 10px rgba(0,0,0,0.07); border-radius: 12px; }
+    .card-header { border-radius: 12px 12px 0 0 !important; }
+    .stat-card { border-radius: 12px; padding: 20px; color: #fff; }
+    .stat-card .stat-icon { font-size: 2.5rem; opacity: 0.8; }
+    .stat-card .stat-value { font-size: 2rem; font-weight: 700; }
+    .stat-card .stat-label { font-size: 0.85rem; opacity: 0.9; }
+    .btn-primary { background: var(--primary); border-color: var(--primary); }
+    .btn-primary:hover { opacity: 0.9; background: var(--primary); border-color: var(--primary); }
+    .badge-active { background: #22c55e; }
+    .badge-inactive { background: #ef4444; }
+    .student-photo { width: 40px; height: 40px; object-fit: cover; border-radius: 50%; }
+    .student-photo-lg { width: 120px; height: 120px; object-fit: cover; border-radius: 50%; border: 4px solid #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
+    .table th { background: var(--secondary); color: #1e293b; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+    .form-label { font-weight: 500; font-size: 0.9rem; color: #374151; }
+    .section-divider { border: 0; border-top: 2px solid var(--secondary); margin: 20px 0; }
+    @media print {
+      .sidebar, .topbar, .no-print { display: none !important; }
+      .main-content { margin-left: 0 !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="sidebar-brand">
+      <h6>Management System</h6>
+      <h5>{{ institute_name }}</h5>
+      <small style="color:rgba(255,255,255,0.6)">{{ institute_tagline }}</small>
+    </div>
+    <nav class="mt-2">
+      <div class="nav-section">Main</div>
+      <a href="{{ url_for('dashboard') }}" class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
+        <i class="bi bi-speedometer2"></i> Dashboard
+      </a>
+      <div class="nav-section">Admissions</div>
+      <a href="{{ url_for('admissions') }}" class="nav-link {% if request.endpoint == 'admissions' %}active{% endif %}">
+        <i class="bi bi-clipboard2-check-fill"></i> Admissions
+      </a>
+      <a href="{{ url_for('add_student') }}" class="nav-link {% if request.endpoint == 'add_student' %}active{% endif %}">
+        <i class="bi bi-person-plus-fill"></i> New Admission
+      </a>
+      <div class="nav-section">Students</div>
+      <a href="{{ url_for('students') }}" class="nav-link {% if request.endpoint in ['students','view_student','edit_student'] %}active{% endif %}">
+        <i class="bi bi-people-fill"></i> All Students
+      </a>
+      <div class="nav-section">Fees</div>
+      <a href="{{ url_for('fees') }}" class="nav-link {% if request.endpoint in ['fees','add_fee','delete_fee'] %}active{% endif %}">
+        <i class="bi bi-cash-coin"></i> Monthly Fees
+      </a>
+      <div class="nav-section">Teachers</div>
+      <a href="{{ url_for('teachers') }}" class="nav-link {% if 'teacher' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-person-badge-fill"></i> Teachers &amp; Salaries
+      </a>
+      <div class="nav-section">Finance</div>
+      <a href="{{ url_for('finance') }}" class="nav-link {% if 'finance' in request.endpoint or 'expense' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-graph-up-arrow"></i> Credits &amp; Debits
+      </a>
+      <div class="nav-section">Academic</div>
+      <a href="{{ url_for('departments') }}" class="nav-link {% if 'department' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-building"></i> Departments
+      </a>
+      <a href="{{ url_for('subjects') }}" class="nav-link {% if 'subject' in request.endpoint %}active{% endif %}">
+        <i class="bi bi-book-fill"></i> Subjects
+      </a>
+      <div class="nav-section">System</div>
+      <a href="{{ url_for('backup') }}" class="nav-link {% if request.endpoint == 'backup' %}active{% endif %}">
+        <i class="bi bi-cloud-arrow-down-fill"></i> Backup &amp; Restore
+      </a>
+      <a href="{{ url_for('settings') }}" class="nav-link {% if request.endpoint == 'settings' %}active{% endif %}">
+        <i class="bi bi-gear-fill"></i> Settings
+      </a>
+      <a href="{{ url_for('about') }}" class="nav-link {% if request.endpoint == 'about' %}active{% endif %}">
+        <i class="bi bi-info-circle-fill"></i> About Us
+      </a>
+    </nav>
+  </div>
+
+  <div class="main-content">
+    <div class="topbar">
+      <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+      <div class="d-flex align-items-center gap-3">
+        <span class="text-muted small"><i class="bi bi-calendar3"></i> <span id="current-date"></span></span>
+        <a href="{{ url_for('add_student') }}" class="btn btn-sm btn-primary no-print"><i class="bi bi-plus-lg"></i> New Student</a>
+      </div>
+    </div>
+    <div class="page-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div class="alert alert-{{ cat }} alert-dismissible fade show" role="alert">
+              <i class="bi bi-{% if cat == 'success' %}check-circle{% else %}exclamation-triangle{% endif %}-fill me-2"></i>{{ msg }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      {% block content %}{% endblock %}
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    document.getElementById('current-date').textContent = new Date().toLocaleDateString('en-US', {weekday:'short',year:'numeric',month:'short',day:'numeric'});
+  </script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

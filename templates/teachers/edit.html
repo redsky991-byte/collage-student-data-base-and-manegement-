@@ -1,0 +1,149 @@
+{% extends 'base.html' %}
+{% block page_title %}Edit Teacher{% endblock %}
+{% block content %}
+<div class="card">
+  <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+    <h6 class="mb-0 fw-bold"><i class="bi bi-pencil-fill me-2 text-warning"></i>Edit Teacher — {{ teacher.name }}</h6>
+    <a href="{{ url_for('teachers') }}" class="btn btn-sm btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  </div>
+  <div class="card-body">
+    <form method="post" enctype="multipart/form-data">
+      <div class="row g-4">
+
+        <!-- ── Personal Information ── -->
+        <div class="col-12">
+          <h6 class="text-primary border-bottom pb-2"><i class="bi bi-person me-2"></i>Personal Information</h6>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Full Name <span class="text-danger">*</span></label>
+          <input type="text" name="name" class="form-control" required value="{{ teacher.name }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Gender</label>
+          <select name="gender" class="form-select">
+            <option value="">Select</option>
+            <option value="Male"   {% if teacher.gender=='Male' %}selected{% endif %}>Male</option>
+            <option value="Female" {% if teacher.gender=='Female' %}selected{% endif %}>Female</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Date of Birth</label>
+          <input type="date" name="date_of_birth" class="form-control" value="{{ teacher.date_of_birth or '' }}">
+          {% if teacher.age %}
+          <small class="text-muted">Current Age: <strong>{{ teacher.age }} years</strong></small>
+          {% endif %}
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">CNIC Number</label>
+          <input type="text" name="cnic_number" class="form-control" value="{{ teacher.cnic_number or '' }}" placeholder="XXXXX-XXXXXXX-X">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Phone</label>
+          <input type="text" name="phone" class="form-control" value="{{ teacher.phone or '' }}" placeholder="03XX-XXXXXXX">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Email</label>
+          <input type="email" name="email" class="form-control" value="{{ teacher.email or '' }}" placeholder="teacher@email.com">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Address</label>
+          <textarea name="address" class="form-control" rows="2" placeholder="Residential address">{{ teacher.address or '' }}</textarea>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Photo</label>
+          {% if teacher.photo %}
+          <div class="mb-2">
+            <img src="{{ url_for('uploaded_file', filename=teacher.photo) }}" class="rounded" style="height:80px;border:2px solid #e2e8f0">
+          </div>
+          {% endif %}
+          <input type="file" name="photo" class="form-control" accept="image/*" onchange="previewPhoto(this)">
+          <img id="photo-preview" src="" class="mt-2 rounded" style="max-height:80px;display:none">
+        </div>
+
+        <!-- ── Academic Information ── -->
+        <div class="col-12 mt-2">
+          <h6 class="text-primary border-bottom pb-2"><i class="bi bi-mortarboard me-2"></i>Academic Information</h6>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Qualification</label>
+          <input type="text" name="qualification" class="form-control" value="{{ teacher.qualification or '' }}" placeholder="e.g. M.Sc, B.Ed, PhD">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Experience (Years)</label>
+          <input type="number" name="experience_years" class="form-control" min="0" value="{{ teacher.experience_years or 0 }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Join Date</label>
+          <input type="date" name="join_date" class="form-control" value="{{ teacher.join_date or '' }}">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Specialisation (free text)</label>
+          <input type="text" name="subject" class="form-control" value="{{ teacher.subject or '' }}" placeholder="e.g. Mathematics, Physics">
+        </div>
+        <div class="col-md-6">
+          <label class="form-label">Department</label>
+          <select name="department_id" class="form-select">
+            <option value="">All / None</option>
+            {% for d in departments %}
+            <option value="{{ d.id }}" {% if teacher.department_id == d.id %}selected{% endif %}>{{ d.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="col-12">
+          <label class="form-label">Teaching Subjects</label>
+          <div class="row g-2">
+            {% for sub in all_subjects %}
+            <div class="col-md-3 col-sm-4 col-6">
+              <div class="form-check">
+                <input class="form-check-input" type="checkbox" name="teaching_subjects"
+                       value="{{ sub.id }}" id="sub{{ sub.id }}"
+                       {% if sub.id|string in subject_ids %}checked{% endif %}>
+                <label class="form-check-label small" for="sub{{ sub.id }}">{{ sub.name }}</label>
+              </div>
+            </div>
+            {% endfor %}
+            {% if not all_subjects %}<div class="col-12"><p class="text-muted small">No subjects defined yet</p></div>{% endif %}
+          </div>
+        </div>
+
+        <!-- ── Employment ── -->
+        <div class="col-12 mt-2">
+          <h6 class="text-primary border-bottom pb-2"><i class="bi bi-cash me-2"></i>Employment Details</h6>
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Monthly Salary (Rs)</label>
+          <input type="number" name="monthly_salary" class="form-control" min="0" step="0.01" value="{{ teacher.monthly_salary or 0 }}">
+        </div>
+        <div class="col-md-4">
+          <label class="form-label">Status</label>
+          <select name="status" class="form-select">
+            <option value="Active"   {% if teacher.status=='Active' %}selected{% endif %}>Active</option>
+            <option value="Inactive" {% if teacher.status=='Inactive' %}selected{% endif %}>Inactive</option>
+            <option value="On Leave" {% if teacher.status=='On Leave' %}selected{% endif %}>On Leave</option>
+          </select>
+        </div>
+
+        <div class="col-12 mt-2">
+          <button type="submit" class="btn btn-primary px-4"><i class="bi bi-save me-2"></i>Save Changes</button>
+          <a href="{{ url_for('teachers') }}" class="btn btn-outline-secondary ms-2"><i class="bi bi-x-lg me-1"></i>Cancel</a>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function previewPhoto(input) {
+  if (input.files && input.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var p = document.getElementById('photo-preview');
+      p.src = e.target.result;
+      p.style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+</script>
+{% endblock %}
