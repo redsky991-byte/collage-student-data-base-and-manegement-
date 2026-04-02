@@ -5,6 +5,7 @@ Handles all SQLite database operations.
 
 import sqlite3
 import os
+import shutil
 from datetime import datetime
 
 
@@ -125,6 +126,7 @@ def initialize_db():
     """)
 
     # Seed default settings
+    _default_backup_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "backups")
     defaults = {
         "institution_name": "My College",
         "institution_address": "123 College Street",
@@ -135,6 +137,7 @@ def initialize_db():
         "available_currencies": "USD,EUR,GBP,PKR,INR,AED,SAR,CAD,AUD,JPY",
         "theme": "default",
         "fee_types": "Tuition,Library,Laboratory,Sports,Transport,Exam,Hostel,Miscellaneous",
+        "backup_directory": _default_backup_dir,
     }
     for key, value in defaults.items():
         cur.execute(
@@ -488,3 +491,102 @@ def get_invoice(invoice_id):
     row = conn.execute("SELECT * FROM invoices WHERE id = ?", (invoice_id,)).fetchone()
     conn.close()
     return dict(row) if row else None
+
+
+# ─── Backup / Restore helpers ──────────────────────────────────────────────────
+
+def get_backup_directory():
+    """Return the user-configured backup directory, creating it if needed."""
+    path = get_setting("backup_directory") or os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "backups"
+    )
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def create_backup(backup_dir=None):
+    """
+    Copy the live database to *backup_dir* (or the configured directory).
+
+    The backup file is named:
+        college_backup_YYYYMMDD_HHMMSS.db
+
+    Returns the full path of the created backup file.
+    Raises OSError / sqlite3.Error on failure.
+    """
+    if backup_dir is None:
+        backup_dir = get_backup_directory()
+    os.makedirs(backup_dir, exist_ok=True)
+
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    dest = os.path.join(backup_dir, f"college_backup_{timestamp}.db")
+
+    # Use SQLite's online-backup API so the copy is always consistent
+    src_conn = get_connection()
+    dst_conn = sqlite3.connect(dest)
+    try:
+        src_conn.backup(dst_conn)
+    finally:
+        dst_conn.close()
+        src_conn.close()
+
+    return dest
+
+
+def restore_backup(backup_path):
+    """
+    Restore the database from *backup_path*.
+
+    Before overwriting, the current database is backed up automatically so
+    that the restore can be undone.  Returns the path of the safety backup.
+    Raises ValueError if *backup_path* does not exist or is not a valid DB.
+    Raises OSError / sqlite3.Error on failure.
+    """
+    if not os.path.isfile(backup_path):
+        raise ValueError(f"Backup file not found: {backup_path}")
+
+    # Quick sanity-check: try to open the file as an SQLite database
+    try:
+        test = sqlite3.connect(backup_path)
+        test.execute("SELECT name FROM sqlite_master LIMIT 1").fetchone()
+        test.close()
+    except sqlite3.DatabaseError as exc:
+        raise ValueError(f"The selected file is not a valid SQLite database.\n{exc}") from exc
+
+    # Safety backup of current data before overwriting
+    safety = create_backup()
+
+    # Overwrite the live database with the chosen backup
+    src_conn = sqlite3.connect(backup_path)
+    dst_conn = get_connection()
+    try:
+        src_conn.backup(dst_conn)
+    finally:
+        dst_conn.close()
+        src_conn.close()
+
+    return safety
+
+
+def list_backups(backup_dir=None):
+    """
+    Return a list of (filename, full_path, size_kb, mtime_str) tuples for all
+    *.db files in *backup_dir*, sorted newest-first.
+    """
+    if backup_dir is None:
+        backup_dir = get_backup_directory()
+    if not os.path.isdir(backup_dir):
+        return []
+    entries = []
+    for fname in os.listdir(backup_dir):
+        if not fname.lower().endswith(".db"):
+            continue
+        full = os.path.join(backup_dir, fname)
+        stat = os.stat(full)
+        size_kb = stat.st_size / 1024
+        mtime_ts = stat.st_mtime
+        mtime_str = datetime.fromtimestamp(mtime_ts).strftime("%Y-%m-%d %H:%M:%S")
+        entries.append((fname, full, size_kb, mtime_str, mtime_ts))
+    entries.sort(key=lambda e: e[4], reverse=True)
+    return [(fname, full, size_kb, mtime_str)
+            for fname, full, size_kb, mtime_str, _ in entries]

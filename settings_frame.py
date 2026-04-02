@@ -1,9 +1,11 @@
 """
-Settings frame – institution info, currency configuration, fee types.
+Settings frame – institution info, currency configuration, fee types,
+and backup / restore.
 """
 
+import os
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 
 import database as db
 from utils import (
@@ -34,13 +36,16 @@ class SettingsFrame(tk.Frame):
         self._inst_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._curr_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._fee_tab = tk.Frame(self._nb, bg=COLORS["white"])
+        self._bkp_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._nb.add(self._inst_tab, text="  Institution  ")
         self._nb.add(self._curr_tab, text="  Currency  ")
         self._nb.add(self._fee_tab, text="  Fee Types  ")
+        self._nb.add(self._bkp_tab, text="  Backup & Restore  ")
 
         self._build_inst_tab()
         self._build_currency_tab()
         self._build_fee_tab()
+        self._build_backup_tab()
 
     # ── Institution tab ───────────────────────────────────────────────────────
 
@@ -193,6 +198,12 @@ class SettingsFrame(tk.Frame):
         self._fee_types_var.set(fee_types)
         self._fee_types_display.config(text=fee_types.replace(",", " | "))
 
+        # Backup directory
+        self._backup_dir_var.set(
+            settings.get("backup_directory", db.get_backup_directory())
+        )
+        self._refresh_backup_list()
+
     def _on_currency_select(self, *_):
         code = self._default_currency_var.get()
         self._update_currency_preview(code)
@@ -239,3 +250,180 @@ class SettingsFrame(tk.Frame):
         db.set_setting("fee_types", value)
         self._fee_types_display.config(text=value.replace(",", " | "))
         messagebox.showinfo("Saved", "Fee types saved.")
+
+    # ── Backup & Restore tab ──────────────────────────────────────────────────
+
+    def _build_backup_tab(self):
+        frame = tk.Frame(self._bkp_tab, bg=COLORS["white"], padx=30, pady=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(frame, text="Backup & Restore", font=FONTS["heading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).pack(anchor="w", pady=(0, 4))
+        tk.Label(
+            frame,
+            text="Create timestamped backups of your database and restore them at any time.",
+            font=FONTS["small"], bg=COLORS["white"], fg=COLORS["text_light"],
+        ).pack(anchor="w", pady=(0, 14))
+
+        # ── Backup directory row ──────────────────────────────────────────────
+        dir_row = tk.Frame(frame, bg=COLORS["white"])
+        dir_row.pack(fill=tk.X, pady=(0, 4))
+
+        tk.Label(dir_row, text="Backup Directory:", font=FONTS["body"],
+                 bg=COLORS["white"], width=20, anchor="e").pack(side=tk.LEFT, padx=(0, 8))
+
+        self._backup_dir_var = tk.StringVar()
+        tk.Entry(dir_row, textvariable=self._backup_dir_var,
+                 font=FONTS["body"], width=46,
+                 relief=tk.SOLID, bd=1).pack(side=tk.LEFT, padx=(0, 6))
+
+        make_button(dir_row, "📂 Browse", self._browse_backup_dir,
+                    style="secondary").pack(side=tk.LEFT, padx=(0, 6))
+        make_button(dir_row, "💾 Save Path", self._save_backup_dir,
+                    style="success").pack(side=tk.LEFT)
+
+        # ── Action buttons ────────────────────────────────────────────────────
+        btn_row = tk.Frame(frame, bg=COLORS["white"])
+        btn_row.pack(fill=tk.X, pady=14)
+
+        make_button(btn_row, "⬆️  Create Backup Now", self._create_backup,
+                    style="primary").pack(side=tk.LEFT, padx=(0, 10))
+        make_button(btn_row, "📁 Restore from File…", self._restore_from_file,
+                    style="warning").pack(side=tk.LEFT)
+
+        # ── Existing backups list ─────────────────────────────────────────────
+        tk.Label(frame, text="Existing Backups  (double-click to restore)",
+                 font=FONTS["subheading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).pack(anchor="w", pady=(6, 4))
+
+        list_frame = tk.Frame(frame, bg=COLORS["white"])
+        list_frame.pack(fill=tk.BOTH, expand=True)
+
+        cols = ("filename", "size", "created")
+        self._backup_tree = ttk.Treeview(list_frame, columns=cols,
+                                          show="headings", height=10)
+        self._backup_tree.heading("filename", text="File Name", anchor="w")
+        self._backup_tree.heading("size",     text="Size (KB)", anchor="w")
+        self._backup_tree.heading("created",  text="Created At", anchor="w")
+        self._backup_tree.column("filename", width=310, anchor="w")
+        self._backup_tree.column("size",     width=90,  anchor="w")
+        self._backup_tree.column("created",  width=160, anchor="w")
+
+        vsb = ttk.Scrollbar(list_frame, orient="vertical",
+                             command=self._backup_tree.yview)
+        self._backup_tree.configure(yscrollcommand=vsb.set)
+        self._backup_tree.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        vsb.pack(side=tk.LEFT, fill=tk.Y)
+
+        self._backup_tree.bind("<Double-1>", self._restore_selected_backup)
+
+        # Refresh / Delete row
+        btn_row2 = tk.Frame(frame, bg=COLORS["white"])
+        btn_row2.pack(fill=tk.X, pady=(6, 0))
+        make_button(btn_row2, "🔄 Refresh List", self._refresh_backup_list,
+                    style="secondary").pack(side=tk.LEFT, padx=(0, 10))
+        make_button(btn_row2, "🗑️  Delete Selected", self._delete_selected_backup,
+                    style="danger").pack(side=tk.LEFT)
+
+    # ── Backup helpers ────────────────────────────────────────────────────────
+
+    def _browse_backup_dir(self):
+        path = filedialog.askdirectory(
+            title="Select Backup Directory",
+            initialdir=self._backup_dir_var.get() or os.path.expanduser("~"),
+        )
+        if path:
+            self._backup_dir_var.set(path)
+
+    def _save_backup_dir(self):
+        path = self._backup_dir_var.get().strip()
+        if not path:
+            messagebox.showerror("Error", "Please enter or browse to a backup directory.")
+            return
+        if not os.path.isabs(path):
+            messagebox.showerror("Error", "Please select an absolute directory path.")
+            return
+        db.set_setting("backup_directory", path)
+        os.makedirs(path, exist_ok=True)
+        messagebox.showinfo("Saved", f"Backup directory saved:\n{path}")
+        self._refresh_backup_list()
+
+    def _create_backup(self):
+        backup_dir = self._backup_dir_var.get().strip() or None
+        try:
+            dest = db.create_backup(backup_dir)
+            messagebox.showinfo(
+                "Backup Created",
+                f"Backup saved successfully:\n{dest}"
+            )
+            self._refresh_backup_list()
+        except Exception as exc:  # pylint: disable=broad-except
+            messagebox.showerror("Backup Failed", str(exc))
+
+    def _restore_from_file(self):
+        path = filedialog.askopenfilename(
+            title="Select Backup File to Restore",
+            filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")],
+            initialdir=self._backup_dir_var.get() or os.path.expanduser("~"),
+        )
+        if not path:
+            return
+        self._do_restore(path)
+
+    def _restore_selected_backup(self, _event=None):
+        sel = self._backup_tree.selection()
+        if not sel:
+            return
+        item = self._backup_tree.item(sel[0])
+        full_path = item["values"][3]  # hidden column with full path
+        self._do_restore(full_path)
+
+    def _do_restore(self, path):
+        if not messagebox.askyesno(
+            "Confirm Restore",
+            f"Restore database from:\n{path}\n\n"
+            "A safety backup of your current data will be created first.\n\n"
+            "The application will need to reload after restore. Continue?"
+        ):
+            return
+        try:
+            safety = db.restore_backup(path)
+            messagebox.showinfo(
+                "Restore Successful",
+                f"Database restored successfully.\n\n"
+                f"A safety backup of your previous data was saved to:\n{safety}\n\n"
+                "Please restart the application for the changes to take full effect."
+            )
+            self._refresh_backup_list()
+        except (ValueError, OSError, Exception) as exc:  # pylint: disable=broad-except
+            messagebox.showerror("Restore Failed", str(exc))
+
+    def _refresh_backup_list(self):
+        for row in self._backup_tree.get_children():
+            self._backup_tree.delete(row)
+        backup_dir = self._backup_dir_var.get().strip() or None
+        entries = db.list_backups(backup_dir)
+        for fname, full, size_kb, mtime in entries:
+            self._backup_tree.insert(
+                "", "end",
+                values=(fname, f"{size_kb:.1f}", mtime, full)
+            )
+
+    def _delete_selected_backup(self):
+        sel = self._backup_tree.selection()
+        if not sel:
+            messagebox.showinfo("No Selection", "Please select a backup to delete.")
+            return
+        item = self._backup_tree.item(sel[0])
+        fname = item["values"][0]
+        full_path = item["values"][3]
+        if not messagebox.askyesno(
+            "Confirm Delete",
+            f"Permanently delete backup:\n{fname}?"
+        ):
+            return
+        try:
+            os.remove(full_path)
+            self._refresh_backup_list()
+        except OSError as exc:
+            messagebox.showerror("Delete Failed", str(exc))
