@@ -8,6 +8,7 @@ from datetime import datetime
 
 import database as db
 from utils import COLORS, FONTS, apply_treeview_style, make_button, center_window, make_label_entry, make_label_combo
+import print_utils
 
 NOTICE_CATEGORIES = ["General", "Academic", "Exam", "Holiday", "Sports", "Fee", "Urgent", "Event"]
 NOTICE_AUDIENCES = ["All", "Students", "Staff", "Teachers", "Parents"]
@@ -34,6 +35,8 @@ class NoticesFrame(tk.Frame):
         make_button(toolbar, "🗑️ Delete", self._delete_notice,
                     style="danger").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "👁 View", self._view_notice,
+                    style="primary").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print List", self._print_notices,
                     style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
@@ -126,6 +129,21 @@ class NoticesFrame(tk.Frame):
         if messagebox.askyesno("Confirm", "Delete this notice?"):
             db.delete_notice(nid)
             self.refresh()
+
+    def _print_notices(self):
+        active_only = not self._show_all_var.get()
+        notices = db.get_all_notices(active_only=active_only)
+        headers = ["#", "Title", "Category", "Audience", "Posted By", "Date", "Expiry", "Active"]
+        rows = [
+            (
+                n["id"], n["title"], n.get("category", ""),
+                n.get("audience", ""), n.get("posted_by", "") or "",
+                n.get("posted_date", ""), n.get("expiry_date", "") or "",
+                "Yes" if n["is_active"] else "No",
+            )
+            for n in notices
+        ]
+        print_utils.print_table("Notices & Announcements", headers, rows, "notices")
 
     def _view_notice(self):
         nid = self._selected_id()
@@ -270,4 +288,8 @@ class NoticeViewer(tk.Toplevel):
         txt.insert("1.0", d.get("content", ""))
         txt.configure(state=tk.DISABLED)
 
-        make_button(self, "✖ Close", self.destroy, style="danger").pack(pady=8)
+        btn_frame = tk.Frame(self, bg=COLORS["white"])
+        btn_frame.pack(pady=8)
+        make_button(btn_frame, "🖨️ Print", lambda: print_utils.print_notice(d),
+                    style="primary").pack(side=tk.LEFT, padx=6)
+        make_button(btn_frame, "✖ Close", self.destroy, style="danger").pack(side=tk.LEFT, padx=6)

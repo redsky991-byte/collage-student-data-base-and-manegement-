@@ -13,6 +13,7 @@ from utils import (
     get_available_currencies, get_default_currency,
     format_amount,
 )
+import print_utils
 
 
 INVOICE_TYPES = ["Fee Invoice", "Salary Invoice", "Service Invoice",
@@ -44,6 +45,8 @@ class InvoicesFrame(tk.Frame):
         make_button(toolbar, "✅ Mark Paid", self._mark_paid,
                     style="success").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🖨️ Preview", self._preview,
+                    style="primary").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print List", self._print_list,
                     style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
@@ -160,6 +163,28 @@ class InvoicesFrame(tk.Frame):
         conn.commit()
         conn.close()
         self.refresh()
+
+    def _print_list(self):
+        invoices = db.get_all_invoices()
+        status_filter = self._filter_var.get() if hasattr(self, "_filter_var") else "All"
+        if status_filter != "All":
+            invoices = [i for i in invoices if i["status"] == status_filter]
+        title = f"Invoice List{' – ' + status_filter if status_filter != 'All' else ''}"
+        headers = ["#", "Invoice #", "Type", "Recipient",
+                   "Amount", "Currency", "Issue Date", "Due Date", "Status"]
+        rows = [
+            (
+                inv["id"], inv["invoice_number"], inv["invoice_type"],
+                inv["recipient_name"],
+                format_amount(inv["amount"], inv["currency"]),
+                inv["currency"],
+                inv.get("issue_date") or "",
+                inv.get("due_date") or "",
+                inv["status"],
+            )
+            for inv in invoices
+        ]
+        print_utils.print_table(title, headers, rows, "invoices")
 
     def _preview(self):
         iid = self._selected_id()
@@ -333,4 +358,8 @@ class InvoicePreview(tk.Toplevel):
         tk.Label(frame, text="Thank you!", font=FONTS["subheading"],
                  bg=COLORS["white"], fg=COLORS["text_light"]).pack()
 
-        make_button(self, "✖ Close", self.destroy, style="danger").pack(pady=10)
+        btn_frame = tk.Frame(self, bg=COLORS["white"])
+        btn_frame.pack(pady=10)
+        make_button(btn_frame, "🖨️ Print", lambda: print_utils.print_invoice(self._data),
+                    style="primary").pack(side=tk.LEFT, padx=6)
+        make_button(btn_frame, "✖ Close", self.destroy, style="danger").pack(side=tk.LEFT, padx=6)

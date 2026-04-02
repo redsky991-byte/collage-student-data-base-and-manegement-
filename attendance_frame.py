@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 import database as db
 from utils import COLORS, FONTS, apply_treeview_style, make_button, center_window
+import print_utils
 
 
 ATTENDANCE_STATUSES = ["Present", "Absent", "Late", "Leave"]
@@ -73,6 +74,9 @@ class AttendanceFrame(tk.Frame):
         make_button(top, "💾 Save Attendance",
                     lambda pt=person_type, dv=date_var: self._save_attendance(pt, dv),
                     style="success").pack(side=tk.LEFT, padx=8)
+        make_button(top, "🖨️ Print",
+                    lambda pt=person_type, dv=date_var: self._print_daily_att(pt, dv),
+                    style="secondary").pack(side=tk.LEFT, padx=2)
 
         stats_var = tk.StringVar()
         tk.Label(top, textvariable=stats_var, font=FONTS["small"],
@@ -144,6 +148,8 @@ class AttendanceFrame(tk.Frame):
 
         make_button(top, "🔍 Generate Report", self._generate_report,
                     style="primary").pack(side=tk.LEFT, padx=10)
+        make_button(top, "🖨️ Print Report", self._print_report,
+                    style="secondary").pack(side=tk.LEFT, padx=4)
 
         # Summary cards
         self._rpt_summary_frame = tk.Frame(self._report_tab, bg=COLORS["light"])
@@ -323,3 +329,42 @@ class AttendanceFrame(tk.Frame):
         self._rpt_tree.tag_configure("absent", foreground=COLORS["danger"])
         self._rpt_tree.tag_configure("late", foreground=COLORS["warning"])
         self._rpt_tree.tag_configure("leave", foreground=COLORS["secondary"])
+
+    def _print_daily_att(self, person_type, date_var):
+        date_str = date_var.get().strip()
+        tree = self._student_tree if person_type == "student" else self._staff_tree
+        title = f"Attendance – {person_type.title()} – {date_str}"
+        headers = ["ID", "Name", "Info", "Status"]
+        rows = [
+            tree.item(item)["values"]
+            for item in tree.get_children()
+        ]
+        print_utils.print_table(title, headers, rows, "records")
+
+    def _print_report(self):
+        person_type = self._rpt_type_var.get()
+        person_id = self._rpt_id_var.get().strip()
+        from_date = self._rpt_from_var.get().strip()
+        to_date = self._rpt_to_var.get().strip()
+
+        records = db.get_attendance(
+            person_type, person_id or None, from_date or None, to_date or None
+        )
+
+        id_label = f"  ID: {person_id}" if person_id else ""
+        period = ""
+        if from_date or to_date:
+            period = f"  {from_date} to {to_date}"
+        title = f"Attendance Report – {person_type.title()}{id_label}{period}"
+
+        headers = ["Date", "Person ID", "Status", "Remarks"]
+        rows = [
+            (
+                r.get("attendance_date", ""),
+                r.get("person_id", ""),
+                r.get("status", ""),
+                r.get("remarks", ""),
+            )
+            for r in records
+        ]
+        print_utils.print_table(title, headers, rows, "attendance records")

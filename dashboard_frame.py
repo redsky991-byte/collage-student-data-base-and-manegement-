@@ -4,9 +4,11 @@ Dashboard / home frame showing summary statistics and AI-powered insights.
 
 import tkinter as tk
 from tkinter import ttk
+from datetime import datetime
 
 import database as db
-from utils import COLORS, FONTS, format_amount, get_default_currency
+from utils import COLORS, FONTS, format_amount, get_default_currency, make_button
+import print_utils
 
 
 class DashboardFrame(tk.Frame):
@@ -16,14 +18,27 @@ class DashboardFrame(tk.Frame):
         self.refresh()
 
     def _build(self):
-        # Header
-        hdr = tk.Frame(self, bg=COLORS["primary"], pady=12)
+        # ── Header bar ────────────────────────────────────────────────────────
+        hdr = tk.Frame(self, bg=COLORS["primary"], pady=10)
         hdr.pack(fill=tk.X)
+
         self._institution_label = tk.Label(
             hdr, text="College Management System", font=FONTS["title"],
             bg=COLORS["primary"], fg=COLORS["white"]
         )
         self._institution_label.pack(side=tk.LEFT, padx=20)
+
+        # Date/time label on the right side of header
+        self._dt_label = tk.Label(
+            hdr, text="", font=FONTS["small"],
+            bg=COLORS["primary"], fg=COLORS["white"]
+        )
+        self._dt_label.pack(side=tk.RIGHT, padx=16)
+        self._update_clock()
+
+        # Print Dashboard button
+        make_button(hdr, "🖨️ Print Report", self._print_dashboard,
+                    style="secondary").pack(side=tk.RIGHT, padx=8)
 
         # Stats cards row
         self._cards_frame = tk.Frame(self, bg=COLORS["light"], pady=16)
@@ -133,15 +148,23 @@ class DashboardFrame(tk.Frame):
             ("📣 Active Notices", str(len(notices)), "announcements", "#D35400"),
         ]
         for title, value, subtitle, color in cards:
-            card = tk.Frame(self._cards_frame, bg=color,
-                            padx=14, pady=12, relief=tk.RAISED, bd=0)
-            card.pack(side=tk.LEFT, padx=6, fill=tk.Y)
-            tk.Label(card, text=title, font=FONTS["small"],
-                     bg=color, fg=COLORS["white"]).pack(anchor="w")
-            tk.Label(card, text=value, font=("Segoe UI", 18, "bold"),
-                     bg=color, fg=COLORS["white"]).pack(anchor="w")
-            tk.Label(card, text=subtitle, font=FONTS["small"],
-                     bg=color, fg=COLORS["white"]).pack(anchor="w")
+            # Outer wrapper gives a white card look with a colored left accent bar
+            outer = tk.Frame(self._cards_frame, bg=COLORS["white"],
+                             relief=tk.FLAT, bd=0, pady=0)
+            outer.pack(side=tk.LEFT, padx=5, fill=tk.Y)
+
+            # Coloured accent strip on the left
+            tk.Frame(outer, bg=color, width=5).pack(side=tk.LEFT, fill=tk.Y)
+
+            inner = tk.Frame(outer, bg=COLORS["white"], padx=12, pady=10)
+            inner.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+            tk.Label(inner, text=title, font=FONTS["small"],
+                     bg=COLORS["white"], fg=COLORS["text_light"]).pack(anchor="w")
+            tk.Label(inner, text=value, font=("Segoe UI", 17, "bold"),
+                     bg=COLORS["white"], fg=color).pack(anchor="w")
+            tk.Label(inner, text=subtitle, font=FONTS["small"],
+                     bg=COLORS["white"], fg=COLORS["text_light"]).pack(anchor="w")
 
     def _load_recent(self):
         self._student_tree.delete(*self._student_tree.get_children())
@@ -245,3 +268,28 @@ class DashboardFrame(tk.Frame):
                          font=FONTS["small"], bg=COLORS["white"],
                          fg=COLORS["text"]).pack(anchor="w", padx=16)
 
+    # ── Clock ─────────────────────────────────────────────────────────────────
+
+    def _update_clock(self):
+        now = datetime.now().strftime("%a, %d %b %Y   %I:%M:%S %p")
+        self._dt_label.config(text=now)
+        self.after(1000, self._update_clock)
+
+    # ── Print ─────────────────────────────────────────────────────────────────
+
+    def _print_dashboard(self):
+        students = db.get_all_students()
+        staff = db.get_all_staff()
+        fees = db.get_all_fees()
+        invoices = db.get_all_invoices()
+        subjects = db.get_all_subjects()
+        notices = db.get_all_notices(active_only=True)
+        try:
+            att_data = db.get_attendance_analytics()
+            fee_data = db.get_fee_analytics()
+        except Exception:
+            att_data = {}
+            fee_data = {"total_collected": 0, "total_pending": 0}
+        print_utils.print_dashboard(
+            students, staff, fees, invoices, subjects, notices, att_data, fee_data
+        )

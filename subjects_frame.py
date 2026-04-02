@@ -11,6 +11,7 @@ from utils import (
     COLORS, FONTS, apply_treeview_style, make_button,
     make_label_entry, make_label_combo, center_window,
 )
+import print_utils
 
 SEMESTERS = [""] + [str(i) for i in range(1, 13)]
 GRADES = ["", "A+", "A", "A-", "B+", "B", "B-", "C+", "C", "C-", "D", "F", "Incomplete"]
@@ -53,6 +54,8 @@ class SubjectsFrame(tk.Frame):
                     style="secondary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🗑️ Delete", self._delete_subject,
                     style="danger").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print", self._print_subjects,
+                    style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self._load_subjects,
                     style="primary").pack(side=tk.LEFT, padx=4)
 
@@ -167,6 +170,21 @@ class SubjectsFrame(tk.Frame):
                 s.get("description", "") or "",
             ))
         self._subj_stats.set(f"Total subjects: {len(subjects)}")
+
+    def _print_subjects(self):
+        subjects = db.get_all_subjects()
+        headers = ["Code", "Subject Name", "Program", "Semester", "Credits", "Description"]
+        rows = [
+            (
+                s["subject_code"], s["subject_name"],
+                s.get("program", "") or "",
+                s.get("semester", "") or "",
+                s.get("credit_hours", "") or "",
+                s.get("description", "") or "",
+            )
+            for s in subjects
+        ]
+        print_utils.print_table("Subjects List", headers, rows, "subjects")
 
     def _load_teacher_subjects(self):
         records = db.get_all_teacher_subjects()

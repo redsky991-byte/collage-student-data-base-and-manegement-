@@ -22,6 +22,7 @@ from utils import (
     format_amount,
 )
 from students_frame import BiodataViewer
+import print_utils
 
 
 MONTHS = [
@@ -72,6 +73,8 @@ class SalaryFrame(tk.Frame):
                     style="warning").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "👤 Biodata", self._view_staff_biodata,
                     style="primary").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print List", self._print_staff,
+                    style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
 
@@ -118,6 +121,8 @@ class SalaryFrame(tk.Frame):
                     style="danger").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "✅ Mark Paid", self._mark_payment_paid,
                     style="success").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print List", self._print_payments,
+                    style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self._load_payments,
                     style="primary").pack(side=tk.LEFT, padx=4)
 
@@ -250,6 +255,46 @@ class SalaryFrame(tk.Frame):
         staff = db.get_staff(sid)
         if staff:
             BiodataViewer(self, staff, person_type="staff")
+
+    def _print_staff(self):
+        staff = db.get_all_staff()
+        headers = ["Staff ID", "Full Name", "Department", "Designation",
+                   "Salary", "Currency", "Email", "Phone", "Status"]
+        rows = [
+            (
+                s["staff_id"],
+                f"{s['first_name']} {s['last_name']}",
+                s.get("department") or "",
+                s.get("designation") or "",
+                format_amount(s.get("salary", 0), s.get("currency", "")),
+                s.get("currency") or "",
+                s.get("email") or "",
+                s.get("phone") or "",
+                s.get("status") or "",
+            )
+            for s in staff
+        ]
+        print_utils.print_table("Staff Directory", headers, rows, "staff members")
+
+    def _print_payments(self):
+        payments = db.get_all_salary_payments()
+        headers = ["#", "Staff ID", "Name", "Designation", "Month", "Year",
+                   "Amount", "Paid Date", "Status"]
+        rows = [
+            (
+                p.get("id", ""),
+                p.get("staff_id", ""),
+                f"{p.get('first_name','')} {p.get('last_name','')}".strip(),
+                p.get("designation") or "",
+                p.get("month") or "",
+                p.get("year") or "",
+                format_amount(p.get("amount", 0), p.get("currency", "")),
+                p.get("paid_date") or "",
+                p.get("status") or "",
+            )
+            for p in payments
+        ]
+        print_utils.print_table("Salary Payments", headers, rows, "payment records")
 
     # ── Payment actions ───────────────────────────────────────────────────────
 

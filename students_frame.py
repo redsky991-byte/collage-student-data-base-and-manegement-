@@ -19,6 +19,7 @@ from utils import (
     COLORS, FONTS, apply_treeview_style, make_button,
     make_label_entry, make_label_combo, center_window,
 )
+import print_utils
 
 
 GENDERS = ["Male", "Female", "Other", "Prefer not to say"]
@@ -53,6 +54,8 @@ class StudentsFrame(tk.Frame):
         make_button(toolbar, "🗑️ Delete", self._delete,
                     style="danger").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "👤 Biodata", self._view_biodata,
+                    style="primary").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print List", self._print_list,
                     style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
@@ -172,6 +175,27 @@ class StudentsFrame(tk.Frame):
         student = db.get_student(sid)
         if student:
             BiodataViewer(self, student, person_type="student")
+
+    def _print_list(self):
+        q = self._search_var.get().strip()
+        students = db.search_students(q) if q else db.get_all_students()
+        headers = ["ID", "Full Name", "Program", "Semester", "Gender",
+                   "Phone", "Blood Grp", "Enrolled", "Status"]
+        rows = [
+            (
+                s["student_id"],
+                f"{s['first_name']} {s['last_name']}",
+                s.get("program") or "",
+                s.get("semester") or "",
+                s.get("gender") or "",
+                s.get("phone") or "",
+                s.get("blood_group") or "",
+                s.get("enrollment_date") or "",
+                s.get("status") or "",
+            )
+            for s in students
+        ]
+        print_utils.print_table("Student List", headers, rows, "students")
 
 
 # ─── Student add/edit dialog ──────────────────────────────────────────────────
@@ -458,5 +482,12 @@ class BiodataViewer(tk.Toplevel):
                      bg=COLORS["white"], fg=COLORS["text"],
                      anchor="w").grid(row=i, column=1, padx=4, pady=2, sticky="w")
 
+        make_button(self, "🖨️ Print", self._print_biodata, style="primary").pack(pady=(4, 0))
         make_button(self, "✖ Close", self.destroy, style="danger").pack(pady=8)
+
+    def _print_biodata(self):
+        if self._person_type == "student":
+            print_utils.print_student_biodata(self._data)
+        else:
+            print_utils.print_staff_biodata(self._data)
 
