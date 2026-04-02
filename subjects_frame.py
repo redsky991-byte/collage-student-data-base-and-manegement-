@@ -192,7 +192,7 @@ class SubjectsFrame(tk.Frame):
         """).fetchall()
         conn.close()
         self._se_tree.delete(*self._se_tree.get_children())
-        for r in rows:
+        for r in [dict(row) for row in rows]:
             name = f"{r['first_name']} {r['last_name']}"
             self._se_tree.insert("", tk.END, values=(
                 r["id"], r["student_id"], name,

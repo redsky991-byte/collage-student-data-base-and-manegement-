@@ -18,7 +18,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import database as db
-from utils import COLORS, FONTS, center_window
+from utils import COLORS, FONTS, center_window, make_button
 from dashboard_frame import DashboardFrame
 from students_frame import StudentsFrame
 from fees_frame import FeesFrame
@@ -28,6 +28,11 @@ from settings_frame import SettingsFrame
 from attendance_frame import AttendanceFrame
 from subjects_frame import SubjectsFrame
 from notices_frame import NoticesFrame
+
+
+APP_VERSION = "v2.0.0"
+DEVELOPER_NAME = "Zulfiqar Ali"
+DEVELOPER_URL = "www.maxtechfix.com"
 
 
 class CollegeApp(tk.Tk):
@@ -116,9 +121,26 @@ class CollegeApp(tk.Tk):
             btn.pack(fill=tk.X)
             self._nav_buttons[key] = btn
 
+        # About / Help button at bottom of sidebar
+        tk.Button(
+            self._sidebar,
+            text="ℹ️  About / Help",
+            font=FONTS["small"],
+            bg=COLORS["primary"],
+            fg=COLORS["text_light"],
+            relief=tk.FLAT,
+            anchor="w",
+            padx=18,
+            pady=6,
+            cursor="hand2",
+            activebackground=COLORS["secondary"],
+            activeforeground=COLORS["white"],
+            command=self._show_about,
+        ).pack(side=tk.BOTTOM, fill=tk.X)
+
         # Version label at bottom of sidebar
         tk.Label(
-            self._sidebar, text="v2.0.0", font=FONTS["small"],
+            self._sidebar, text=APP_VERSION, font=FONTS["small"],
             bg=COLORS["primary"], fg=COLORS["text_light"]
         ).pack(side=tk.BOTTOM, pady=8)
 
@@ -158,6 +180,48 @@ class CollegeApp(tk.Tk):
         if key == "dashboard":
             institution = db.get_setting("institution_name") or "My College"
             self._sidebar_title.config(text=institution)
+
+    # ── About / Help ──────────────────────────────────────────────────────────
+
+    def _show_about(self):
+        win = tk.Toplevel(self)
+        win.title("About / Help")
+        win.resizable(False, False)
+        win.grab_set()
+        win.configure(bg=COLORS["white"])
+        center_window(win, 440, 360)
+
+        # Header
+        hdr = tk.Frame(win, bg=COLORS["primary"], pady=12)
+        hdr.pack(fill=tk.X)
+        tk.Label(hdr, text="ℹ️  About / Help",
+                 font=FONTS["heading"], bg=COLORS["primary"],
+                 fg=COLORS["white"]).pack(padx=16)
+
+        body = tk.Frame(win, bg=COLORS["white"], padx=30, pady=20)
+        body.pack(fill=tk.BOTH, expand=True)
+
+        lines = [
+            ("College Management System", FONTS["heading"], COLORS["primary"]),
+            (APP_VERSION, FONTS["body"], COLORS["text_light"]),
+            ("", FONTS["small"], COLORS["white"]),
+            ("Developer", FONTS["subheading"], COLORS["primary"]),
+            (DEVELOPER_NAME, FONTS["body"], COLORS["text"]),
+            (DEVELOPER_URL, FONTS["body"], COLORS["secondary"]),
+            ("", FONTS["small"], COLORS["white"]),
+            ("Features", FONTS["subheading"], COLORS["primary"]),
+            ("• Student, Staff & Fee Management", FONTS["body"], COLORS["text"]),
+            ("• Attendance, Subjects & Invoices", FONTS["body"], COLORS["text"]),
+            ("• Offline – No internet required", FONTS["body"], COLORS["text"]),
+            ("• Runs on any Windows PC", FONTS["body"], COLORS["text"]),
+            ("", FONTS["small"], COLORS["white"]),
+            (f"Support: {DEVELOPER_URL}", FONTS["small"], COLORS["text_light"]),
+        ]
+        for text, font, fg in lines:
+            tk.Label(body, text=text, font=font, bg=COLORS["white"],
+                     fg=fg, anchor="w").pack(anchor="w")
+
+        make_button(win, "✖ Close", win.destroy, style="primary").pack(pady=10)
 
 
 def main():
