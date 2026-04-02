@@ -13,6 +13,7 @@ from utils import (
     get_available_currencies, get_default_currency,
     currency_display, format_amount,
 )
+import print_utils
 
 
 FEE_STATUSES = ["Pending", "Paid", "Overdue", "Waived", "Partial"]
@@ -48,6 +49,8 @@ class FeesFrame(tk.Frame):
                     style="danger").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "✅ Mark Paid", self._mark_paid,
                     style="success").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "🖨️ Print", self._print_fees,
+                    style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
 
@@ -126,6 +129,30 @@ class FeesFrame(tk.Frame):
             messagebox.showwarning("No Selection", "Please select a fee record first.")
             return None
         return self._tree.item(sel[0])["values"][0]
+
+    def _print_fees(self):
+        fees = db.get_all_fees()
+        status_filter = self._filter_var.get() if hasattr(self, "_filter_var") else "All"
+        if status_filter != "All":
+            fees = [f for f in fees if f["status"] == status_filter]
+        title = f"Fee Records{' – ' + status_filter if status_filter != 'All' else ''}"
+        headers = ["#", "Student ID", "Student Name", "Fee Type",
+                   "Amount", "Currency", "Due Date", "Paid Date", "Status"]
+        rows = [
+            (
+                f["id"],
+                f["student_id"],
+                f"{f.get('first_name','')} {f.get('last_name','')}".strip(),
+                f["fee_type"],
+                format_amount(f["amount"], f["currency"]),
+                f["currency"],
+                f.get("due_date") or "",
+                f.get("paid_date") or "",
+                f["status"],
+            )
+            for f in fees
+        ]
+        print_utils.print_table(title, headers, rows, "fee records")
 
     def _add_dialog(self):
         FeeDialog(self, title="Add Fee Record", on_save=self._save_new)
