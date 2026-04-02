@@ -1,0 +1,12 @@
+# College Student Database and Management System
+# Python dependencies
+#
+# Install with:
+#   pip install -r requirements.txt
+#
+# Core GUI toolkit (tkinter is part of Python's standard library – no install needed)
+# Database: sqlite3 (standard library – no install needed)
+#
+# Only pyinstaller is needed as an extra dependency to build the .exe:
+
+pyinstaller>=6.5.0
