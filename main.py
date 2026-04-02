@@ -34,21 +34,43 @@ APP_VERSION = "v2.0.0"
 DEVELOPER_NAME = "Zulfiqar Ali"
 DEVELOPER_URL = "www.maxtechfix.com"
 
+# ─── Navigation structure ──────────────────────────────────────────────────────
+# Each entry is either:
+#   ("section", "SECTION LABEL")            – a non-clickable section header
+#   ("item", label, FrameClass, key)        – a regular nav item
+#   ("action", label, action_name, key)     – a special action item (no separate frame)
+
+_NAV_STRUCTURE = [
+    ("section", "MAIN"),
+    ("item",    "🏠  Dashboard",       DashboardFrame,   "dashboard"),
+    ("section", "ADMISSIONS"),
+    ("item",    "📋  Admissions",       StudentsFrame,    "students"),
+    ("action",  "➕  New Admission",    "new_admission",  None),
+    ("section", "STUDENTS"),
+    ("item",    "👥  All Students",     StudentsFrame,    "students"),
+    ("section", "FEES"),
+    ("item",    "💳  Monthly Fees",     FeesFrame,        "fees"),
+    ("section", "TEACHERS"),
+    ("item",    "👥  Staff & Salary",   SalaryFrame,      "salary"),
+    ("section", "OTHER"),
+    ("item",    "📋  Attendance",       AttendanceFrame,  "attendance"),
+    ("item",    "📚  Subjects",         SubjectsFrame,    "subjects"),
+    ("item",    "🧾  Invoices",         InvoicesFrame,    "invoices"),
+    ("item",    "📣  Notices",          NoticesFrame,     "notices"),
+    ("item",    "⚙️  Settings",         SettingsFrame,    "settings"),
+]
+
+# Unique frame entries (class, key) – deduplicated so we only build one frame per key
+_FRAME_ITEMS = []
+_seen_keys = set()
+for _entry in _NAV_STRUCTURE:
+    if _entry[0] == "item" and _entry[3] not in _seen_keys:
+        _FRAME_ITEMS.append((_entry[2], _entry[3]))
+        _seen_keys.add(_entry[3])
+
 
 class CollegeApp(tk.Tk):
     """Main application window."""
-
-    NAV_ITEMS = [
-        ("🏠  Dashboard",       DashboardFrame,   "dashboard"),
-        ("🎓  Students",        StudentsFrame,    "students"),
-        ("📋  Attendance",      AttendanceFrame,  "attendance"),
-        ("📚  Subjects",        SubjectsFrame,    "subjects"),
-        ("💳  Fees",            FeesFrame,        "fees"),
-        ("👥  Staff & Salary",  SalaryFrame,      "salary"),
-        ("🧾  Invoices",        InvoicesFrame,    "invoices"),
-        ("📣  Notices",         NoticesFrame,     "notices"),
-        ("⚙️  Settings",        SettingsFrame,    "settings"),
-    ]
 
     def __init__(self):
         super().__init__()
@@ -88,39 +110,98 @@ class CollegeApp(tk.Tk):
         title_font_weight = "bold" if title_bold != "0" else "normal"
         title_font = (title_font_name, title_font_size, title_font_weight)
 
-        # Sidebar
-        self._sidebar = tk.Frame(self, bg=COLORS["primary"], width=210)
+        # ── Sidebar ───────────────────────────────────────────────────────────
+        self._sidebar = tk.Frame(self, bg=COLORS["primary"], width=220)
         self._sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self._sidebar.pack_propagate(False)
 
+        # Sidebar header: "Management System" small label
+        tk.Label(
+            self._sidebar,
+            text="Management System",
+            font=("Segoe UI", 8),
+            bg=COLORS["primary"],
+            fg=COLORS["text_light"],
+            pady=4,
+        ).pack(fill=tk.X, padx=10)
+
+        # Institution name (large, bold)
         self._sidebar_title = tk.Label(
             self._sidebar, text=institution, font=title_font,
             bg=COLORS["primary"], fg=COLORS["white"],
-            wraplength=195, justify="center", pady=18
+            wraplength=200, justify="center", pady=4
         )
         self._sidebar_title.pack(fill=tk.X)
 
-        tk.Frame(self._sidebar, bg=COLORS["secondary"], height=1).pack(fill=tk.X)
+        # "Excellence in Education" subtitle
+        tk.Label(
+            self._sidebar,
+            text="Excellence in Education",
+            font=("Segoe UI", 8, "italic"),
+            bg=COLORS["primary"],
+            fg=COLORS["text_light"],
+            pady=2,
+        ).pack(fill=tk.X)
 
+        tk.Frame(self._sidebar, bg=COLORS["secondary"], height=1).pack(fill=tk.X, pady=4)
+
+        # ── Nav items with section headers ────────────────────────────────────
         self._nav_buttons = {}
-        for label, _cls, key in self.NAV_ITEMS:
-            btn = tk.Button(
-                self._sidebar,
-                text=label,
-                font=FONTS["body"],
-                bg=COLORS["primary"],
-                fg=COLORS["white"],
-                relief=tk.FLAT,
-                anchor="w",
-                padx=18,
-                pady=10,
-                cursor="hand2",
-                activebackground=COLORS["secondary"],
-                activeforeground=COLORS["white"],
-                command=lambda k=key: self._show(k),
-            )
-            btn.pack(fill=tk.X)
-            self._nav_buttons[key] = btn
+
+        for entry in _NAV_STRUCTURE:
+            if entry[0] == "section":
+                # Section label
+                tk.Label(
+                    self._sidebar,
+                    text=entry[1],
+                    font=("Segoe UI", 7, "bold"),
+                    bg=COLORS["primary"],
+                    fg=COLORS["text_light"],
+                    anchor="w",
+                    padx=18,
+                    pady=3,
+                ).pack(fill=tk.X)
+
+            elif entry[0] == "item":
+                _, label, _cls, key = entry
+                btn = tk.Button(
+                    self._sidebar,
+                    text=label,
+                    font=FONTS["body"],
+                    bg=COLORS["primary"],
+                    fg=COLORS["white"],
+                    relief=tk.FLAT,
+                    anchor="w",
+                    padx=18,
+                    pady=8,
+                    cursor="hand2",
+                    activebackground=COLORS["secondary"],
+                    activeforeground=COLORS["white"],
+                    command=lambda k=key: self._show(k),
+                )
+                btn.pack(fill=tk.X)
+                # Track by key; if duplicate key, use first occurrence
+                if key not in self._nav_buttons:
+                    self._nav_buttons[key] = btn
+
+            elif entry[0] == "action":
+                _, label, action_name, _key = entry
+                btn = tk.Button(
+                    self._sidebar,
+                    text=label,
+                    font=FONTS["body"],
+                    bg=COLORS["primary"],
+                    fg=COLORS["white"],
+                    relief=tk.FLAT,
+                    anchor="w",
+                    padx=18,
+                    pady=8,
+                    cursor="hand2",
+                    activebackground=COLORS["secondary"],
+                    activeforeground=COLORS["white"],
+                    command=lambda a=action_name: self._handle_action(a),
+                )
+                btn.pack(fill=tk.X)
 
         # About / Help button at bottom of sidebar
         tk.Button(
@@ -143,15 +224,18 @@ class CollegeApp(tk.Tk):
         tk.Label(
             self._sidebar, text=APP_VERSION, font=FONTS["small"],
             bg=COLORS["primary"], fg=COLORS["text_light"]
-        ).pack(side=tk.BOTTOM, pady=8)
+        ).pack(side=tk.BOTTOM, pady=4)
 
-        # Main content area
+        # ── Main content area ─────────────────────────────────────────────────
         self._content = tk.Frame(self, bg=COLORS["light"])
         self._content.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Pre-build all frames
-        for _label, frame_cls, key in self.NAV_ITEMS:
-            frame = frame_cls(self._content)
+        # Pre-build all frames (one per unique key)
+        for frame_cls, key in _FRAME_ITEMS:
+            if key == "dashboard":
+                frame = frame_cls(self._content, navigate_to=self._show)
+            else:
+                frame = frame_cls(self._content)
             frame.place(relx=0, rely=0, relwidth=1, relheight=1)
             self._frames[key] = frame
 
@@ -162,11 +246,12 @@ class CollegeApp(tk.Tk):
             return
 
         # Deactivate old button
-        if self._active_key:
+        if self._active_key and self._active_key in self._nav_buttons:
             self._nav_buttons[self._active_key].config(bg=COLORS["primary"])
 
-        # Activate new button
-        self._nav_buttons[key].config(bg=COLORS["secondary"])
+        # Activate new button (if it has one)
+        if key in self._nav_buttons:
+            self._nav_buttons[key].config(bg=COLORS["secondary"])
         self._active_key = key
 
         # Raise the frame
@@ -181,6 +266,19 @@ class CollegeApp(tk.Tk):
         if key == "dashboard":
             institution = db.get_setting("institution_name") or "My College"
             self._sidebar_title.config(text=institution)
+
+    def _handle_action(self, action_name):
+        """Handle special sidebar action buttons."""
+        if action_name == "new_admission":
+            self._show("students")
+            # Small delay so the frame is raised before opening dialog
+            self.after(100, self._open_add_student)
+
+    def _open_add_student(self):
+        """Call the add dialog on the students frame."""
+        frame = self._frames.get("students")
+        if frame and hasattr(frame, "_add_dialog"):
+            frame._add_dialog()
 
     # ── About / Help ──────────────────────────────────────────────────────────
 
@@ -213,6 +311,7 @@ class CollegeApp(tk.Tk):
             ("Features", FONTS["subheading"], COLORS["primary"]),
             ("• Student, Staff & Fee Management", FONTS["body"], COLORS["text"]),
             ("• Attendance, Subjects & Invoices", FONTS["body"], COLORS["text"]),
+            ("• Data Backup & Restore", FONTS["body"], COLORS["text"]),
             ("• Offline – No internet required", FONTS["body"], COLORS["text"]),
             ("• Runs on any Windows PC", FONTS["body"], COLORS["text"]),
             ("", FONTS["small"], COLORS["white"]),
