@@ -85,16 +85,98 @@ def format_amount(amount, currency_code=None):
 # ─── Widget helpers ───────────────────────────────────────────────────────────
 
 COLORS = {
-    "primary": "#2C3E50",
-    "secondary": "#3498DB",
-    "success": "#27AE60",
-    "warning": "#F39C12",
-    "danger": "#E74C3C",
-    "light": "#ECF0F1",
-    "white": "#FFFFFF",
-    "text": "#2C3E50",
+    "primary":    "#2C3E50",
+    "secondary":  "#3498DB",
+    "success":    "#27AE60",
+    "warning":    "#F39C12",
+    "danger":     "#E74C3C",
+    "light":      "#ECF0F1",
+    "white":      "#FFFFFF",
+    "text":       "#2C3E50",
     "text_light": "#7F8C8D",
 }
+
+# ─── Dashboard Themes ─────────────────────────────────────────────────────────
+
+THEMES = {
+    "Default": {
+        "primary":    "#2C3E50",
+        "secondary":  "#3498DB",
+        "success":    "#27AE60",
+        "warning":    "#F39C12",
+        "danger":     "#E74C3C",
+        "light":      "#ECF0F1",
+        "white":      "#FFFFFF",
+        "text":       "#2C3E50",
+        "text_light": "#7F8C8D",
+        "description": "Dark navy sidebar with bright blue accents — the original look.",
+    },
+    "Classic": {
+        "primary":    "#1A252F",
+        "secondary":  "#2980B9",
+        "success":    "#1E8449",
+        "warning":    "#D4AC0D",
+        "danger":     "#A93226",
+        "light":      "#EBF5FB",
+        "white":      "#FFFFFF",
+        "text":       "#1A252F",
+        "text_light": "#717D7E",
+        "description": "Deep charcoal-blue sidebar — professional and timeless.",
+    },
+    "Stylish": {
+        "primary":    "#4A235A",
+        "secondary":  "#8E44AD",
+        "success":    "#1E8449",
+        "warning":    "#D4AC0D",
+        "danger":     "#CB4335",
+        "light":      "#F5EEF8",
+        "white":      "#FFFFFF",
+        "text":       "#2C2040",
+        "text_light": "#8871A0",
+        "description": "Rich purple sidebar — vibrant, modern and stylish.",
+    },
+    "Decent": {
+        "primary":    "#1B4F72",
+        "secondary":  "#2E86C1",
+        "success":    "#1E8449",
+        "warning":    "#CA6F1E",
+        "danger":     "#CB4335",
+        "light":      "#EBF5FB",
+        "white":      "#FFFFFF",
+        "text":       "#1B2631",
+        "text_light": "#5D6D7E",
+        "description": "Ocean-blue sidebar — neat, calm and decent.",
+    },
+    "Emerald": {
+        "primary":    "#1D4E47",
+        "secondary":  "#1ABC9C",
+        "success":    "#17A589",
+        "warning":    "#D4AC0D",
+        "danger":     "#CB4335",
+        "light":      "#E8F8F5",
+        "white":      "#FFFFFF",
+        "text":       "#1D3A35",
+        "text_light": "#5D8A80",
+        "description": "Forest-green sidebar — fresh, natural and refreshing.",
+    },
+}
+
+
+def apply_theme(theme_name):
+    """Apply a named theme's colors to the global COLORS dict."""
+    theme = THEMES.get(theme_name, THEMES["Default"])
+    for key, value in theme.items():
+        if key != "description":
+            COLORS[key] = value
+
+
+def load_saved_theme():
+    """Load the saved dashboard theme from the database and apply it to COLORS."""
+    theme_name = db.get_setting("dashboard_theme") or "Default"
+    apply_theme(theme_name)
+
+
+# ─── Widget helpers ───────────────────────────────────────────────────────────
 
 FONTS = {
     "title": ("Segoe UI", 20, "bold"),

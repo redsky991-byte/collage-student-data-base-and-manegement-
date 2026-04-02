@@ -18,7 +18,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import database as db
-from utils import COLORS, FONTS, center_window, make_button
+from utils import COLORS, FONTS, center_window, make_button, load_saved_theme
 from dashboard_frame import DashboardFrame
 from students_frame import StudentsFrame
 from fees_frame import FeesFrame
@@ -53,6 +53,7 @@ class CollegeApp(tk.Tk):
     def __init__(self):
         super().__init__()
         db.initialize_db()
+        load_saved_theme()       # Apply saved colour theme before building UI
         self._apply_title_style()
         self.state("zoomed")          # Start maximised on Windows
         self.minsize(1100, 660)

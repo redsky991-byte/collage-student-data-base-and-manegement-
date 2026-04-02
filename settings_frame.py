@@ -7,7 +7,7 @@ from tkinter import ttk, messagebox
 
 import database as db
 from utils import (
-    COLORS, FONTS, make_button, center_window,
+    COLORS, FONTS, THEMES, apply_theme, make_button, center_window,
     CURRENCY_SYMBOLS, CURRENCY_NAMES,
     get_available_currencies,
 )
@@ -39,17 +39,20 @@ class SettingsFrame(tk.Frame):
         self._fee_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._title_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._acad_tab = tk.Frame(self._nb, bg=COLORS["white"])
+        self._theme_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._nb.add(self._inst_tab, text="  Institution  ")
         self._nb.add(self._curr_tab, text="  Currency  ")
         self._nb.add(self._fee_tab, text="  Fee Types  ")
         self._nb.add(self._title_tab, text="  Title Style  ")
         self._nb.add(self._acad_tab, text="  Academic  ")
+        self._nb.add(self._theme_tab, text="  Dashboard Theme  ")
 
         self._build_inst_tab()
         self._build_currency_tab()
         self._build_fee_tab()
         self._build_title_tab()
         self._build_acad_tab()
+        self._build_theme_tab()
 
     # ── Institution tab ───────────────────────────────────────────────────────
 
@@ -278,6 +281,132 @@ class SettingsFrame(tk.Frame):
         make_button(frame, "💾 Save Academic Settings", self._save_acad,
                     style="success").grid(row=3, column=1, pady=16, sticky="w")
 
+    # ── Dashboard Theme tab ────────────────────────────────────────────────────
+
+    def _build_theme_tab(self):
+        outer = tk.Frame(self._theme_tab, bg=COLORS["white"])
+        outer.pack(fill=tk.BOTH, expand=True)
+
+        # Scrollable container
+        canvas = tk.Canvas(outer, bg=COLORS["white"], highlightthickness=0)
+        vsb = tk.Scrollbar(outer, orient="vertical", command=canvas.yview)
+        canvas.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        frame = tk.Frame(canvas, bg=COLORS["white"], padx=30, pady=20)
+        frame_id = canvas.create_window((0, 0), window=frame, anchor="nw")
+
+        def _on_frame_cfg(e):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def _on_canvas_cfg(e):
+            canvas.itemconfig(frame_id, width=e.width)
+
+        frame.bind("<Configure>", _on_frame_cfg)
+        canvas.bind("<Configure>", _on_canvas_cfg)
+
+        tk.Label(frame, text="🎨  Dashboard Themes", font=FONTS["heading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).pack(anchor="w", pady=(0, 4))
+        tk.Label(
+            frame,
+            text="Choose a theme to set the color palette for the entire application.\n"
+                 "Click 'Apply Theme' then restart the app for all changes to take effect.",
+            font=FONTS["small"], bg=COLORS["white"], fg=COLORS["text_light"],
+            justify="left",
+        ).pack(anchor="w", pady=(0, 14))
+
+        self._theme_var = tk.StringVar(value="Default")
+
+        # Build one card per theme
+        self._theme_cards = {}
+        for name, data in THEMES.items():
+            card = tk.Frame(frame, bg=COLORS["light"], relief=tk.FLAT, bd=0)
+            card.pack(fill=tk.X, pady=5)
+            self._theme_cards[name] = card
+
+            # Left: radio + name + description
+            left = tk.Frame(card, bg=COLORS["light"])
+            left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=8)
+
+            rb = tk.Radiobutton(
+                left,
+                text=f"  {name}",
+                variable=self._theme_var,
+                value=name,
+                font=FONTS["subheading"],
+                bg=COLORS["light"],
+                fg=COLORS["text"],
+                activebackground=COLORS["light"],
+                selectcolor=COLORS["light"],
+                command=self._on_theme_select,
+            )
+            rb.pack(anchor="w")
+
+            tk.Label(
+                left,
+                text=data["description"],
+                font=FONTS["small"],
+                bg=COLORS["light"],
+                fg=COLORS["text_light"],
+                anchor="w",
+            ).pack(anchor="w", padx=22)
+
+            # Right: color swatches
+            right = tk.Frame(card, bg=COLORS["light"])
+            right.pack(side=tk.RIGHT, padx=14, pady=8)
+
+            for swatch_key, label in [
+                ("primary",   "Sidebar"),
+                ("secondary", "Accent"),
+                ("success",   "Success"),
+                ("light",     "Background"),
+            ]:
+                swatch_col = tk.Frame(right, bg=COLORS["light"])
+                swatch_col.pack(side=tk.LEFT, padx=5)
+                tk.Frame(
+                    swatch_col,
+                    bg=data[swatch_key],
+                    width=32, height=32,
+                    relief=tk.SOLID, bd=1,
+                ).pack()
+                tk.Label(
+                    swatch_col,
+                    text=label,
+                    font=("Segoe UI", 7),
+                    bg=COLORS["light"],
+                    fg=COLORS["text_light"],
+                ).pack()
+
+        # Buttons row
+        btn_row = tk.Frame(frame, bg=COLORS["white"])
+        btn_row.pack(anchor="w", pady=(14, 4))
+        make_button(btn_row, "✅ Apply Theme", self._save_theme,
+                    style="success").pack(side=tk.LEFT, padx=(0, 10))
+        make_button(btn_row, "↩ Reset to Default", self._reset_theme,
+                    style="primary").pack(side=tk.LEFT)
+
+        self._theme_status = tk.Label(frame, text="", font=FONTS["small"],
+                                      bg=COLORS["white"], fg=COLORS["success"])
+        self._theme_status.pack(anchor="w", pady=(4, 0))
+
+    def _on_theme_select(self):
+        """Highlight the selected theme card."""
+        selected = self._theme_var.get()
+        for name, card in self._theme_cards.items():
+            color = THEMES[name]["secondary"] if name == selected else COLORS["light"]
+            card.configure(bg=color)
+            for child in card.winfo_children():
+                try:
+                    child.configure(bg=color)
+                except tk.TclError:
+                    pass
+                for grandchild in child.winfo_children():
+                    try:
+                        grandchild.configure(bg=color)
+                    except tk.TclError:
+                        pass
+
     # ── Load / Save ───────────────────────────────────────────────────────────
 
     def _load(self):
@@ -310,6 +439,13 @@ class SettingsFrame(tk.Frame):
 
         # Academic
         self._acad_year_var.set(settings.get("academic_year", ""))
+
+        # Dashboard theme
+        saved_theme = settings.get("dashboard_theme", "Default")
+        if saved_theme not in THEMES:
+            saved_theme = "Default"
+        self._theme_var.set(saved_theme)
+        self._on_theme_select()
 
     def _on_currency_select(self, *_):
         code = self._default_currency_var.get()
@@ -386,4 +522,18 @@ class SettingsFrame(tk.Frame):
             return
         db.set_setting("academic_year", year)
         messagebox.showinfo("Saved", f"Academic year set to {year}.")
+
+    def _save_theme(self):
+        name = self._theme_var.get()
+        db.set_setting("dashboard_theme", name)
+        apply_theme(name)
+        self._theme_status.config(
+            text=f"✅  '{name}' theme applied. Restart the app to see all changes.",
+            fg=COLORS["success"],
+        )
+
+    def _reset_theme(self):
+        self._theme_var.set("Default")
+        self._on_theme_select()
+        self._save_theme()
 
