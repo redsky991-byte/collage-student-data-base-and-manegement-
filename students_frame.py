@@ -180,8 +180,22 @@ class StudentDialog(tk.Toplevel):
         d = self._data
         self._fv = {}
 
+        # Build student_id field first so we can hold a reference to the Entry
+        id_var = tk.StringVar(value=d.get("student_id", ""))
+        self._fv["student_id"] = id_var
+        tk.Label(form, text="Student ID *", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e").grid(
+            row=0, column=0, padx=(10, 4), pady=4, sticky="e"
+        )
+        id_entry = tk.Entry(form, textvariable=id_var, font=FONTS["body"],
+                            width=30, relief=tk.SOLID, bd=1)
+        id_entry.grid(row=0, column=1, padx=(0, 10), pady=4, sticky="w")
+
+        # Disable Student ID field when editing an existing record
+        if d.get("student_id"):
+            id_entry.configure(state="disabled")
+
         fields = [
-            ("Student ID *", "student_id", 0),
             ("First Name *", "first_name", 1),
             ("Last Name *", "last_name", 2),
             ("Date of Birth", "date_of_birth", 3),
@@ -194,14 +208,6 @@ class StudentDialog(tk.Toplevel):
         for label, key, row in fields:
             self._fv[key] = make_label_entry(form, label, row,
                                              default=d.get(key, ""), width=30)
-
-        # Read-only ID when editing
-        if d.get("student_id"):
-            # find the entry widget and disable it
-            for widget in form.winfo_children():
-                if isinstance(widget, tk.Entry) and widget.cget("textvariable") == str(self._fv["student_id"]):
-                    widget.configure(state="disabled")
-                    break
 
         self._fv["gender"] = make_label_combo(
             form, "Gender", 9, GENDERS,
