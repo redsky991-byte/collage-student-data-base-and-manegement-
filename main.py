@@ -25,47 +25,74 @@ from fees_frame import FeesFrame
 from salary_frame import SalaryFrame
 from invoices_frame import InvoicesFrame
 from settings_frame import SettingsFrame
+from attendance_frame import AttendanceFrame
+from subjects_frame import SubjectsFrame
+from notices_frame import NoticesFrame
 
 
 class CollegeApp(tk.Tk):
     """Main application window."""
 
     NAV_ITEMS = [
-        ("🏠  Dashboard",    DashboardFrame,  "dashboard"),
-        ("🎓  Students",     StudentsFrame,   "students"),
-        ("💳  Fees",         FeesFrame,       "fees"),
-        ("👥  Staff & Salary", SalaryFrame,   "salary"),
-        ("🧾  Invoices",     InvoicesFrame,   "invoices"),
-        ("⚙️  Settings",     SettingsFrame,   "settings"),
+        ("🏠  Dashboard",       DashboardFrame,   "dashboard"),
+        ("🎓  Students",        StudentsFrame,    "students"),
+        ("📋  Attendance",      AttendanceFrame,  "attendance"),
+        ("📚  Subjects",        SubjectsFrame,    "subjects"),
+        ("💳  Fees",            FeesFrame,        "fees"),
+        ("👥  Staff & Salary",  SalaryFrame,      "salary"),
+        ("🧾  Invoices",        InvoicesFrame,    "invoices"),
+        ("📣  Notices",         NoticesFrame,     "notices"),
+        ("⚙️  Settings",        SettingsFrame,    "settings"),
     ]
 
     def __init__(self):
         super().__init__()
-        self.title("College Management System")
+        db.initialize_db()
+        self._apply_title_style()
         self.state("zoomed")          # Start maximised on Windows
-        self.minsize(1000, 620)
+        self.minsize(1100, 660)
         self.configure(bg=COLORS["primary"])
 
-        db.initialize_db()
         self._frames = {}
         self._active_key = None
         self._build_ui()
         self._show("dashboard")
 
+    def _apply_title_style(self):
+        institution = db.get_setting("institution_name") or "College Management System"
+        self.title(institution)
+        # Apply sidebar background from settings
+        bg = db.get_setting("title_bg_color")
+        if bg:
+            COLORS["primary"] = bg
+        fg = db.get_setting("title_color")
+        if fg:
+            COLORS["white"] = fg
+
     # ── UI construction ───────────────────────────────────────────────────────
 
     def _build_ui(self):
+        institution = db.get_setting("institution_name") or "My College"
+        title_font_name = db.get_setting("title_font") or "Segoe UI"
+        try:
+            title_font_size = int(db.get_setting("title_font_size") or "12")
+        except (TypeError, ValueError):
+            title_font_size = 12
+        title_bold = db.get_setting("title_bold")
+        title_font_weight = "bold" if title_bold != "0" else "normal"
+        title_font = (title_font_name, title_font_size, title_font_weight)
+
         # Sidebar
-        self._sidebar = tk.Frame(self, bg=COLORS["primary"], width=200)
+        self._sidebar = tk.Frame(self, bg=COLORS["primary"], width=210)
         self._sidebar.pack(side=tk.LEFT, fill=tk.Y)
         self._sidebar.pack_propagate(False)
 
-        institution = db.get_setting("institution_name") or "My College"
-        tk.Label(
-            self._sidebar, text=institution, font=("Segoe UI", 12, "bold"),
+        self._sidebar_title = tk.Label(
+            self._sidebar, text=institution, font=title_font,
             bg=COLORS["primary"], fg=COLORS["white"],
-            wraplength=180, justify="center", pady=18
-        ).pack(fill=tk.X)
+            wraplength=195, justify="center", pady=18
+        )
+        self._sidebar_title.pack(fill=tk.X)
 
         tk.Frame(self._sidebar, bg=COLORS["secondary"], height=1).pack(fill=tk.X)
 
@@ -91,7 +118,7 @@ class CollegeApp(tk.Tk):
 
         # Version label at bottom of sidebar
         tk.Label(
-            self._sidebar, text="v1.0.0", font=FONTS["small"],
+            self._sidebar, text="v2.0.0", font=FONTS["small"],
             bg=COLORS["primary"], fg=COLORS["text_light"]
         ).pack(side=tk.BOTTOM, pady=8)
 
@@ -130,10 +157,7 @@ class CollegeApp(tk.Tk):
         # Update sidebar institution label when returning from settings
         if key == "dashboard":
             institution = db.get_setting("institution_name") or "My College"
-            for widget in self._sidebar.winfo_children():
-                if isinstance(widget, tk.Label):
-                    widget.config(text=institution)
-                    break
+            self._sidebar_title.config(text=institution)
 
 
 def main():

@@ -1,10 +1,18 @@
 """
-Staff & Salary management frame with customizable currencies.
+Staff & Salary management frame with customizable currencies, photo and biodata.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 from datetime import datetime
+import os
+import shutil
+
+try:
+    from PIL import Image, ImageTk
+    PIL_AVAILABLE = True
+except ImportError:
+    PIL_AVAILABLE = False
 
 import database as db
 from utils import (
@@ -13,6 +21,7 @@ from utils import (
     get_available_currencies, get_default_currency,
     format_amount,
 )
+from students_frame import BiodataViewer
 
 
 MONTHS = [
@@ -61,6 +70,8 @@ class SalaryFrame(tk.Frame):
                     style="danger").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "💰 Add Payment", self._add_payment_for_selected,
                     style="warning").pack(side=tk.LEFT, padx=4)
+        make_button(toolbar, "👤 Biodata", self._view_staff_biodata,
+                    style="primary").pack(side=tk.LEFT, padx=4)
         make_button(toolbar, "🔄 Refresh", self.refresh,
                     style="primary").pack(side=tk.LEFT, padx=4)
 
@@ -232,6 +243,14 @@ class SalaryFrame(tk.Frame):
                       data=pre, on_save=self._save_new_payment)
         self._nb.select(self._pay_tab)
 
+    def _view_staff_biodata(self):
+        sid = self._selected_staff_id()
+        if not sid:
+            return
+        staff = db.get_staff(sid)
+        if staff:
+            BiodataViewer(self, staff, person_type="staff")
+
     # ── Payment actions ───────────────────────────────────────────────────────
 
     def _selected_pay_id(self):
@@ -292,58 +311,142 @@ class SalaryFrame(tk.Frame):
 
 # ─── Staff dialog ──────────────────────────────────────────────────────────────
 
+BLOOD_GROUPS = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"]
+
+
 class StaffDialog(tk.Toplevel):
     def __init__(self, parent, title, on_save, data=None):
         super().__init__(parent)
         self.title(title)
-        self.resizable(False, False)
+        self.resizable(True, True)
         self.grab_set()
         self._on_save = on_save
         self._data = data or {}
+        self._photo_path = (data or {}).get("photo_path", "") or ""
+        self._photo_img = None
         self._build()
-        center_window(self, 520, 520)
+        center_window(self, 700, 640)
 
     def _build(self):
         self.configure(bg=COLORS["white"])
         tk.Label(self, text=self.title(), font=FONTS["heading"],
-                 bg=COLORS["success"], fg=COLORS["white"]).pack(fill=tk.X, pady=(0, 10))
+                 bg=COLORS["success"], fg=COLORS["white"]).pack(fill=tk.X, pady=(0, 6))
 
-        form = tk.Frame(self, bg=COLORS["white"])
-        form.pack(padx=20, pady=10, fill=tk.BOTH, expand=True)
+        nb = ttk.Notebook(self)
+        nb.pack(fill=tk.BOTH, expand=True, padx=10, pady=4)
 
-        d = self._data
-        currencies = get_available_currencies()
+        tab_basic = tk.Frame(nb, bg=COLORS["white"])
+        tab_bio = tk.Frame(nb, bg=COLORS["white"])
+        nb.add(tab_basic, text="  Basic Info  ")
+        nb.add(tab_bio, text="  Biodata & Contact  ")
+
         self._fv = {}
-        self._fv["staff_id"] = make_label_entry(form, "Staff ID *", 0,
-                                                 default=d.get("staff_id", ""), width=28)
-        self._fv["first_name"] = make_label_entry(form, "First Name *", 1,
-                                                   default=d.get("first_name", ""), width=28)
-        self._fv["last_name"] = make_label_entry(form, "Last Name *", 2,
-                                                  default=d.get("last_name", ""), width=28)
-        self._fv["department"] = make_label_entry(form, "Department", 3,
-                                                   default=d.get("department", ""), width=28)
-        self._fv["designation"] = make_label_entry(form, "Designation", 4,
-                                                    default=d.get("designation", ""), width=28)
-        self._fv["email"] = make_label_entry(form, "Email", 5,
-                                              default=d.get("email", ""), width=28)
-        self._fv["phone"] = make_label_entry(form, "Phone", 6,
-                                              default=d.get("phone", ""), width=28)
-        self._fv["salary"] = make_label_entry(form, "Base Salary *", 7,
-                                               default=str(d.get("salary", "")), width=28)
-        self._fv["currency"] = make_label_combo(
-            form, "Currency", 8, currencies,
-            default=d.get("currency", get_default_currency()), width=28)
-        self._fv["join_date"] = make_label_entry(
-            form, "Join Date (YYYY-MM-DD)", 9,
-            default=d.get("join_date", datetime.now().strftime("%Y-%m-%d")), width=28)
-        self._fv["status"] = make_label_combo(
-            form, "Status", 10, STAFF_STATUSES,
-            default=d.get("status", "Active"), width=28)
+        self._build_basic_tab(tab_basic)
+        self._build_bio_tab(tab_bio)
 
         btn_frame = tk.Frame(self, bg=COLORS["white"])
         btn_frame.pack(fill=tk.X, padx=20, pady=10)
         make_button(btn_frame, "💾 Save", self._save, style="success").pack(side=tk.LEFT, padx=4)
         make_button(btn_frame, "✖ Cancel", self.destroy, style="danger").pack(side=tk.LEFT, padx=4)
+
+    def _build_basic_tab(self, parent):
+        left = tk.Frame(parent, bg=COLORS["white"])
+        left.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=10, pady=10)
+        right = tk.Frame(parent, bg=COLORS["white"], width=150)
+        right.pack(side=tk.RIGHT, fill=tk.Y, padx=10, pady=10)
+        right.pack_propagate(False)
+
+        d = self._data
+        currencies = get_available_currencies()
+        self._fv["staff_id"] = make_label_entry(left, "Staff ID *", 0,
+                                                 default=d.get("staff_id", ""), width=26)
+        if d.get("staff_id"):
+            # Get the actual Entry widget and disable it
+            for widget in left.winfo_children():
+                if isinstance(widget, tk.Entry):
+                    widget.configure(state="disabled")
+                    break
+
+        self._fv["first_name"] = make_label_entry(left, "First Name *", 1,
+                                                   default=d.get("first_name", ""), width=26)
+        self._fv["last_name"] = make_label_entry(left, "Last Name *", 2,
+                                                  default=d.get("last_name", ""), width=26)
+        self._fv["department"] = make_label_entry(left, "Department", 3,
+                                                   default=d.get("department", ""), width=26)
+        self._fv["designation"] = make_label_entry(left, "Designation / Role", 4,
+                                                    default=d.get("designation", ""), width=26)
+        self._fv["email"] = make_label_entry(left, "Email", 5,
+                                              default=d.get("email", ""), width=26)
+        self._fv["phone"] = make_label_entry(left, "Phone *", 6,
+                                              default=d.get("phone", ""), width=26)
+        self._fv["salary"] = make_label_entry(left, "Base Salary *", 7,
+                                               default=str(d.get("salary", "")), width=26)
+        self._fv["currency"] = make_label_combo(
+            left, "Currency", 8, currencies,
+            default=d.get("currency", get_default_currency()), width=26)
+        self._fv["join_date"] = make_label_entry(
+            left, "Join Date (YYYY-MM-DD)", 9,
+            default=d.get("join_date", datetime.now().strftime("%Y-%m-%d")), width=26)
+        self._fv["status"] = make_label_combo(
+            left, "Status", 10, STAFF_STATUSES,
+            default=d.get("status", "Active"), width=26)
+
+        # Photo panel
+        tk.Label(right, text="Photo", font=FONTS["subheading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).pack(pady=(10, 4))
+        self._photo_label = tk.Label(right, bg=COLORS["light"], relief=tk.SOLID,
+                                     width=120, height=140)
+        self._photo_label.pack(pady=4)
+        self._refresh_photo()
+        make_button(right, "📷 Browse", self._browse_photo, style="secondary").pack(pady=4, fill=tk.X)
+        make_button(right, "✖ Remove", self._remove_photo, style="danger").pack(pady=2, fill=tk.X)
+
+    def _build_bio_tab(self, parent):
+        d = self._data
+        frame = tk.Frame(parent, bg=COLORS["white"])
+        frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        bio_fields = [
+            ("Father's Name", "father_name", 0),
+            ("Mother's Name", "mother_name", 1),
+            ("Emergency Contact", "emergency_contact", 2),
+            ("CNIC / ID Number", "cnic", 3),
+            ("Nationality", "nationality", 5),
+            ("Religion", "religion", 6),
+            ("Qualification", "qualification", 7),
+            ("Experience (Years)", "experience_years", 8),
+        ]
+        for label, key, row in bio_fields:
+            self._fv[key] = make_label_entry(frame, label, row,
+                                             default=d.get(key, "") or "", width=30)
+        self._fv["blood_group"] = make_label_combo(
+            frame, "Blood Group", 4, BLOOD_GROUPS,
+            default=d.get("blood_group", "Unknown") or "Unknown", width=28)
+
+    def _browse_photo(self):
+        path = filedialog.askopenfilename(
+            title="Select Photo",
+            filetypes=[("Image files", "*.jpg *.jpeg *.png *.bmp"), ("All files", "*.*")]
+        )
+        if path:
+            self._photo_path = path
+            self._refresh_photo()
+
+    def _remove_photo(self):
+        self._photo_path = ""
+        self._photo_img = None
+        self._photo_label.configure(image="", text="No Photo", compound=tk.CENTER)
+
+    def _refresh_photo(self):
+        if self._photo_path and os.path.isfile(self._photo_path) and PIL_AVAILABLE:
+            try:
+                img = Image.open(self._photo_path).resize((120, 140))
+                self._photo_img = ImageTk.PhotoImage(img)
+                self._photo_label.configure(image=self._photo_img, text="")
+                return
+            except Exception:
+                pass
+        self._photo_label.configure(image="", text="No Photo", compound=tk.CENTER)
 
     def _save(self):
         data = {k: v.get().strip() for k, v in self._fv.items()}
@@ -358,6 +461,24 @@ class StaffDialog(tk.Toplevel):
         except ValueError:
             messagebox.showerror("Validation", "Salary must be a number.", parent=self)
             return
+
+        # Copy photo
+        saved_path = ""
+        if self._photo_path and os.path.isfile(self._photo_path):
+            ext = os.path.splitext(self._photo_path)[1]
+            dest = os.path.join(db.PHOTOS_DIR, f"staff_{data['staff_id']}{ext}")
+            try:
+                if os.path.abspath(self._photo_path) != os.path.abspath(dest):
+                    shutil.copy2(self._photo_path, dest)
+                saved_path = dest
+            except Exception:
+                saved_path = self._photo_path
+        data["photo_path"] = saved_path
+
+        for key in ("father_name", "mother_name", "blood_group", "cnic", "religion",
+                    "nationality", "emergency_contact", "qualification", "experience_years"):
+            data.setdefault(key, "")
+
         self._on_save(data)
         self.destroy()
 

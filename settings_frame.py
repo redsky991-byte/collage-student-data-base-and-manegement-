@@ -22,6 +22,9 @@ class SettingsFrame(tk.Frame):
         self._build()
         self._load()
 
+    def refresh(self):
+        self._load()
+
     def _build(self):
         hdr = tk.Frame(self, bg=COLORS["primary"], pady=10)
         hdr.pack(fill=tk.X)
@@ -34,13 +37,19 @@ class SettingsFrame(tk.Frame):
         self._inst_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._curr_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._fee_tab = tk.Frame(self._nb, bg=COLORS["white"])
+        self._title_tab = tk.Frame(self._nb, bg=COLORS["white"])
+        self._acad_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._nb.add(self._inst_tab, text="  Institution  ")
         self._nb.add(self._curr_tab, text="  Currency  ")
         self._nb.add(self._fee_tab, text="  Fee Types  ")
+        self._nb.add(self._title_tab, text="  Title Style  ")
+        self._nb.add(self._acad_tab, text="  Academic  ")
 
         self._build_inst_tab()
         self._build_currency_tab()
         self._build_fee_tab()
+        self._build_title_tab()
+        self._build_acad_tab()
 
     # ── Institution tab ───────────────────────────────────────────────────────
 
@@ -169,6 +178,106 @@ class SettingsFrame(tk.Frame):
                                             wraplength=600, justify="left")
         self._fee_types_display.pack(anchor="w")
 
+    # ── Title style tab ────────────────────────────────────────────────────────
+
+    def _build_title_tab(self):
+        frame = tk.Frame(self._title_tab, bg=COLORS["white"], padx=30, pady=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(frame, text="Customize Title Style", font=FONTS["heading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).grid(
+            row=0, column=0, columnspan=3, pady=(0, 16), sticky="w")
+
+        self._title_fv = {}
+        tk.Label(frame, text="Title Font:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=1, column=0, padx=(0, 8), pady=6, sticky="e")
+        font_choices = ["Segoe UI", "Arial", "Calibri", "Times New Roman",
+                        "Courier New", "Verdana", "Georgia", "Tahoma", "Comic Sans MS"]
+        self._title_fv["title_font"] = tk.StringVar()
+        ttk.Combobox(frame, textvariable=self._title_fv["title_font"],
+                     values=font_choices, width=24, font=FONTS["body"],
+                     state="readonly").grid(row=1, column=1, pady=6, sticky="w")
+
+        tk.Label(frame, text="Font Size:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=2, column=0, padx=(0, 8), pady=6, sticky="e")
+        self._title_fv["title_font_size"] = tk.StringVar()
+        size_choices = [str(i) for i in range(10, 40, 2)]
+        ttk.Combobox(frame, textvariable=self._title_fv["title_font_size"],
+                     values=size_choices, width=8, font=FONTS["body"],
+                     state="readonly").grid(row=2, column=1, pady=6, sticky="w")
+
+        tk.Label(frame, text="Bold:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=3, column=0, padx=(0, 8), pady=6, sticky="e")
+        self._title_bold_var = tk.BooleanVar(value=True)
+        tk.Checkbutton(frame, variable=self._title_bold_var,
+                       bg=COLORS["white"]).grid(row=3, column=1, pady=6, sticky="w")
+
+        tk.Label(frame, text="Title Text Color:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=4, column=0, padx=(0, 8), pady=6, sticky="e")
+        self._title_fv["title_color"] = tk.StringVar()
+        color_entry = tk.Entry(frame, textvariable=self._title_fv["title_color"],
+                               font=FONTS["body"], width=14, relief=tk.SOLID, bd=1)
+        color_entry.grid(row=4, column=1, pady=6, sticky="w")
+        self._title_color_preview = tk.Label(frame, text="  ████  ", font=FONTS["body"],
+                                              bg=COLORS["white"])
+        self._title_color_preview.grid(row=4, column=2, padx=4)
+        self._title_fv["title_color"].trace_add(
+            "write", lambda *_: self._update_title_preview())
+
+        tk.Label(frame, text="Sidebar BG Color:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=5, column=0, padx=(0, 8), pady=6, sticky="e")
+        self._title_fv["title_bg_color"] = tk.StringVar()
+        bg_entry = tk.Entry(frame, textvariable=self._title_fv["title_bg_color"],
+                            font=FONTS["body"], width=14, relief=tk.SOLID, bd=1)
+        bg_entry.grid(row=5, column=1, pady=6, sticky="w")
+        self._title_bg_preview = tk.Label(frame, text="  ████  ", font=FONTS["body"],
+                                           bg=COLORS["white"])
+        self._title_bg_preview.grid(row=5, column=2, padx=4)
+        self._title_fv["title_bg_color"].trace_add(
+            "write", lambda *_: self._update_title_preview())
+
+        tk.Label(frame,
+                 text="Note: Color values must be valid hex codes (e.g. #2C3E50). "
+                      "Restart the app to see sidebar color changes.",
+                 font=FONTS["small"], bg=COLORS["white"], fg=COLORS["text_light"],
+                 wraplength=480, justify="left").grid(
+            row=6, column=0, columnspan=3, pady=8, sticky="w")
+
+        make_button(frame, "💾 Save Title Style", self._save_title_style,
+                    style="success").grid(row=7, column=1, pady=16, sticky="w")
+
+    # ── Academic settings tab ──────────────────────────────────────────────────
+
+    def _build_acad_tab(self):
+        frame = tk.Frame(self._acad_tab, bg=COLORS["white"], padx=30, pady=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(frame, text="Academic Settings", font=FONTS["heading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).grid(
+            row=0, column=0, columnspan=2, pady=(0, 16), sticky="w")
+
+        tk.Label(frame, text="Academic Year:", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e", width=22).grid(
+            row=1, column=0, padx=(0, 8), pady=6, sticky="e")
+        self._acad_year_var = tk.StringVar()
+        tk.Entry(frame, textvariable=self._acad_year_var, font=FONTS["body"],
+                 width=14, relief=tk.SOLID, bd=1).grid(
+            row=1, column=1, pady=6, sticky="w")
+
+        tk.Label(frame,
+                 text="This year is used as the default in subject assignments and enrollments.",
+                 font=FONTS["small"], bg=COLORS["white"], fg=COLORS["text_light"],
+                 wraplength=480, justify="left").grid(
+            row=2, column=0, columnspan=2, pady=6, sticky="w")
+
+        make_button(frame, "💾 Save Academic Settings", self._save_acad,
+                    style="success").grid(row=3, column=1, pady=16, sticky="w")
+
     # ── Load / Save ───────────────────────────────────────────────────────────
 
     def _load(self):
@@ -192,6 +301,15 @@ class SettingsFrame(tk.Frame):
         fee_types = settings.get("fee_types", "")
         self._fee_types_var.set(fee_types)
         self._fee_types_display.config(text=fee_types.replace(",", " | "))
+
+        # Title style
+        for key, var in self._title_fv.items():
+            var.set(settings.get(key, ""))
+        self._title_bold_var.set(settings.get("title_bold", "1") == "1")
+        self._update_title_preview()
+
+        # Academic
+        self._acad_year_var.set(settings.get("academic_year", ""))
 
     def _on_currency_select(self, *_):
         code = self._default_currency_var.get()
@@ -239,3 +357,33 @@ class SettingsFrame(tk.Frame):
         db.set_setting("fee_types", value)
         self._fee_types_display.config(text=value.replace(",", " | "))
         messagebox.showinfo("Saved", "Fee types saved.")
+
+    def _update_title_preview(self):
+        try:
+            color = self._title_fv["title_color"].get().strip() or COLORS["white"]
+            self._title_color_preview.config(fg=color, text="  ████  ")
+        except Exception:
+            pass
+        try:
+            bg_color = self._title_fv["title_bg_color"].get().strip() or COLORS["primary"]
+            self._title_bg_preview.config(fg=bg_color, text="  ████  ")
+        except Exception:
+            pass
+
+    def _save_title_style(self):
+        for key, var in self._title_fv.items():
+            val = var.get().strip()
+            if val:
+                db.set_setting(key, val)
+        db.set_setting("title_bold", "1" if self._title_bold_var.get() else "0")
+        messagebox.showinfo("Saved",
+                            "Title style saved. Restart the app to see all changes take effect.")
+
+    def _save_acad(self):
+        year = self._acad_year_var.get().strip()
+        if not year:
+            messagebox.showerror("Error", "Please enter an academic year.")
+            return
+        db.set_setting("academic_year", year)
+        messagebox.showinfo("Saved", f"Academic year set to {year}.")
+

@@ -10,3 +10,4 @@
 # Only pyinstaller is needed as an extra dependency to build the .exe:
 
 pyinstaller>=6.5.0
+Pillow>=10.0.0
