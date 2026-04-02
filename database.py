@@ -5,6 +5,7 @@ Handles all SQLite database operations.
 
 import sqlite3
 import os
+import shutil
 from datetime import datetime
 
 
@@ -1039,4 +1040,90 @@ def get_fee_analytics():
         "overdue_count": overdue,
         "top_defaulters": defaulters,
     }
+
+
+# ─── Department / Program analytics ──────────────────────────────────────────
+
+def get_students_by_program():
+    """Return a dict mapping program name → student count (all programs)."""
+    conn = get_connection()
+    rows = conn.execute("""
+        SELECT COALESCE(NULLIF(program, ''), 'Unassigned') as prog, COUNT(*) as cnt
+        FROM students
+        GROUP BY prog
+        ORDER BY cnt DESC, prog
+    """).fetchall()
+    conn.close()
+    return {r["prog"]: r["cnt"] for r in rows}
+
+
+def get_monthly_salary_bill():
+    """Return the sum of salaries for all active staff (their base monthly salary)."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COALESCE(SUM(salary), 0) as total FROM staff WHERE status='Active'"
+    ).fetchone()
+    conn.close()
+    return row["total"] if row else 0.0
+
+
+def get_active_teachers_count():
+    """Return count of active staff members."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT COUNT(*) as cnt FROM staff WHERE status='Active'"
+    ).fetchone()
+    conn.close()
+    return row["cnt"] if row else 0
+
+
+def get_departments_count():
+    """Return count of unique programs (students) + unique departments (staff)."""
+    conn = get_connection()
+    student_progs = conn.execute(
+        "SELECT DISTINCT program FROM students WHERE program IS NOT NULL AND program != ''"
+    ).fetchall()
+    staff_depts = conn.execute(
+        "SELECT DISTINCT department FROM staff WHERE department IS NOT NULL AND department != ''"
+    ).fetchall()
+    conn.close()
+    combined = set(r["program"] for r in student_progs) | set(r["department"] for r in staff_depts)
+    return len(combined)
+
+
+# ─── Backup / Restore ─────────────────────────────────────────────────────────
+
+def backup_database(dest_path):
+    """Copy the SQLite database file to dest_path. Returns (True, msg) or (False, err)."""
+    try:
+        # Use SQLite online backup API for a consistent snapshot
+        src_conn = get_connection()
+        dst_conn = sqlite3.connect(dest_path)
+        with dst_conn:
+            src_conn.backup(dst_conn)
+        dst_conn.close()
+        src_conn.close()
+        return True, f"Database backed up to:\n{dest_path}"
+    except Exception as exc:
+        return False, str(exc)
+
+
+def restore_database(src_path):
+    """Restore the database from src_path, overwriting the current database.
+    Returns (True, msg) or (False, err)."""
+    try:
+        # Verify the source is a valid SQLite database
+        test_conn = sqlite3.connect(src_path)
+        test_conn.execute("SELECT name FROM sqlite_master LIMIT 1")
+        test_conn.close()
+        # Perform restore via SQLite backup API
+        src_conn = sqlite3.connect(src_path)
+        dst_conn = get_connection()
+        with dst_conn:
+            src_conn.backup(dst_conn)
+        src_conn.close()
+        dst_conn.close()
+        return True, "Database restored successfully. Please restart the application."
+    except Exception as exc:
+        return False, str(exc)
 

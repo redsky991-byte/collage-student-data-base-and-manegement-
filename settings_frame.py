@@ -1,9 +1,11 @@
 """
-Settings frame – institution info, currency configuration, fee types.
+Settings frame – institution info, currency configuration, fee types, backup/restore.
 """
 
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
+import os
+from datetime import datetime
 
 import database as db
 from utils import (
@@ -40,12 +42,14 @@ class SettingsFrame(tk.Frame):
         self._title_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._acad_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._theme_tab = tk.Frame(self._nb, bg=COLORS["white"])
+        self._backup_tab = tk.Frame(self._nb, bg=COLORS["white"])
         self._nb.add(self._inst_tab, text="  Institution  ")
         self._nb.add(self._curr_tab, text="  Currency  ")
         self._nb.add(self._fee_tab, text="  Fee Types  ")
         self._nb.add(self._title_tab, text="  Title Style  ")
         self._nb.add(self._acad_tab, text="  Academic  ")
         self._nb.add(self._theme_tab, text="  Dashboard Theme  ")
+        self._nb.add(self._backup_tab, text="  Backup & Restore  ")
 
         self._build_inst_tab()
         self._build_currency_tab()
@@ -53,6 +57,7 @@ class SettingsFrame(tk.Frame):
         self._build_title_tab()
         self._build_acad_tab()
         self._build_theme_tab()
+        self._build_backup_tab()
 
     # ── Institution tab ───────────────────────────────────────────────────────
 
@@ -536,4 +541,169 @@ class SettingsFrame(tk.Frame):
         self._theme_var.set("Default")
         self._on_theme_select()
         self._save_theme()
+
+    # ── Backup & Restore tab ──────────────────────────────────────────────────
+
+    def _build_backup_tab(self):
+        frame = tk.Frame(self._backup_tab, bg=COLORS["white"], padx=30, pady=20)
+        frame.pack(fill=tk.BOTH, expand=True)
+
+        tk.Label(frame, text="🗄️  Data Backup & Restore", font=FONTS["heading"],
+                 bg=COLORS["white"], fg=COLORS["primary"]).pack(anchor="w", pady=(0, 4))
+        tk.Label(
+            frame,
+            text="Create a backup of the entire database or restore from a previous backup.\n"
+                 "Backups are saved as .db files that can be stored anywhere on your computer.",
+            font=FONTS["small"], bg=COLORS["white"], fg=COLORS["text_light"],
+            justify="left",
+        ).pack(anchor="w", pady=(0, 16))
+
+        # ── Backup section ────────────────────────────────────────────────────
+        backup_box = tk.LabelFrame(frame, text="  💾  Create Backup  ",
+                                   font=FONTS["subheading"], bg=COLORS["white"],
+                                   fg=COLORS["primary"])
+        backup_box.pack(fill=tk.X, pady=(0, 16))
+
+        b_inner = tk.Frame(backup_box, bg=COLORS["white"], padx=16, pady=12)
+        b_inner.pack(fill=tk.X)
+
+        tk.Label(b_inner,
+                 text="Backup Destination Folder:",
+                 font=FONTS["body"], bg=COLORS["white"]).grid(
+            row=0, column=0, sticky="e", padx=(0, 8), pady=4)
+        self._backup_dir_var = tk.StringVar(
+            value=os.path.expanduser("~")
+        )
+        tk.Entry(b_inner, textvariable=self._backup_dir_var,
+                 font=FONTS["body"], width=44, relief=tk.SOLID, bd=1).grid(
+            row=0, column=1, sticky="w", pady=4)
+        make_button(b_inner, "📂 Browse", self._browse_backup_dir,
+                    style="primary").grid(row=0, column=2, padx=6)
+
+        tk.Label(b_inner,
+                 text="Backup File Name (optional):",
+                 font=FONTS["body"], bg=COLORS["white"]).grid(
+            row=1, column=0, sticky="e", padx=(0, 8), pady=4)
+        self._backup_name_var = tk.StringVar(
+            value=f"college_backup_{datetime.now().strftime('%Y%m%d')}.db"
+        )
+        tk.Entry(b_inner, textvariable=self._backup_name_var,
+                 font=FONTS["body"], width=44, relief=tk.SOLID, bd=1).grid(
+            row=1, column=1, sticky="w", pady=4)
+        tk.Label(b_inner, text="(leave as is for auto-dated name)",
+                 font=FONTS["small"], bg=COLORS["white"],
+                 fg=COLORS["text_light"]).grid(row=1, column=2, padx=6, sticky="w")
+
+        make_button(b_inner, "💾 Backup Now", self._do_backup,
+                    style="success").grid(row=2, column=1, pady=12, sticky="w")
+
+        self._backup_status = tk.Label(b_inner, text="", font=FONTS["small"],
+                                       bg=COLORS["white"], fg=COLORS["success"],
+                                       wraplength=480, justify="left")
+        self._backup_status.grid(row=3, column=0, columnspan=3, sticky="w")
+
+        # ── Restore section ───────────────────────────────────────────────────
+        restore_box = tk.LabelFrame(frame, text="  🔄  Restore from Backup  ",
+                                    font=FONTS["subheading"], bg=COLORS["white"],
+                                    fg=COLORS["primary"])
+        restore_box.pack(fill=tk.X, pady=(0, 16))
+
+        r_inner = tk.Frame(restore_box, bg=COLORS["white"], padx=16, pady=12)
+        r_inner.pack(fill=tk.X)
+
+        tk.Label(r_inner,
+                 text="⚠️  Warning: Restoring will overwrite ALL current data.",
+                 font=("Segoe UI", 10, "bold"), bg=COLORS["white"],
+                 fg=COLORS["danger"]).pack(anchor="w", pady=(0, 8))
+
+        file_row = tk.Frame(r_inner, bg=COLORS["white"])
+        file_row.pack(anchor="w")
+
+        tk.Label(file_row, text="Backup File:", font=FONTS["body"],
+                 bg=COLORS["white"]).pack(side=tk.LEFT, padx=(0, 8))
+        self._restore_file_var = tk.StringVar()
+        tk.Entry(file_row, textvariable=self._restore_file_var,
+                 font=FONTS["body"], width=44, relief=tk.SOLID, bd=1).pack(side=tk.LEFT)
+        make_button(file_row, "📂 Browse", self._browse_restore_file,
+                    style="primary").pack(side=tk.LEFT, padx=6)
+
+        make_button(r_inner, "🔄 Restore Now", self._do_restore,
+                    style="danger").pack(anchor="w", pady=10)
+
+        self._restore_status = tk.Label(r_inner, text="", font=FONTS["small"],
+                                        bg=COLORS["white"], fg=COLORS["success"],
+                                        wraplength=480, justify="left")
+        self._restore_status.pack(anchor="w")
+
+        # ── Tips section ──────────────────────────────────────────────────────
+        tips_box = tk.LabelFrame(frame, text="  💡  Backup Tips  ",
+                                 font=FONTS["subheading"], bg=COLORS["white"],
+                                 fg=COLORS["primary"])
+        tips_box.pack(fill=tk.X)
+
+        tips = [
+            "• Back up regularly – we recommend once a week.",
+            "• Store backups on an external drive or cloud storage (e.g. Google Drive, OneDrive).",
+            "• Keep multiple dated backup files in case a recent backup is also corrupted.",
+            "• After restoring, restart the application for all changes to take effect.",
+        ]
+        for tip in tips:
+            tk.Label(tips_box, text=tip, font=FONTS["small"], bg=COLORS["white"],
+                     fg=COLORS["text_light"], anchor="w").pack(anchor="w", padx=12, pady=2)
+
+    def _browse_backup_dir(self):
+        folder = filedialog.askdirectory(
+            title="Select Backup Destination Folder",
+            initialdir=self._backup_dir_var.get() or os.path.expanduser("~"),
+        )
+        if folder:
+            self._backup_dir_var.set(folder)
+
+    def _browse_restore_file(self):
+        path = filedialog.askopenfilename(
+            title="Select Backup File",
+            filetypes=[("SQLite Database", "*.db"), ("All Files", "*.*")],
+            initialdir=self._backup_dir_var.get() or os.path.expanduser("~"),
+        )
+        if path:
+            self._restore_file_var.set(path)
+
+    def _do_backup(self):
+        folder = self._backup_dir_var.get().strip()
+        if not folder or not os.path.isdir(folder):
+            messagebox.showerror("Error", "Please select a valid destination folder.")
+            return
+        name = self._backup_name_var.get().strip()
+        if not name:
+            name = f"college_backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.db"
+        if not name.endswith(".db"):
+            name += ".db"
+        dest = os.path.join(folder, name)
+        ok, msg = db.backup_database(dest)
+        if ok:
+            self._backup_status.config(text=f"✅  {msg}", fg=COLORS["success"])
+            messagebox.showinfo("Backup Successful", msg)
+        else:
+            self._backup_status.config(text=f"❌  {msg}", fg=COLORS["danger"])
+            messagebox.showerror("Backup Failed", msg)
+
+    def _do_restore(self):
+        src = self._restore_file_var.get().strip()
+        if not src or not os.path.isfile(src):
+            messagebox.showerror("Error", "Please select a valid backup file.")
+            return
+        confirmed = messagebox.askyesno(
+            "Confirm Restore",
+            "⚠️  This will OVERWRITE all current data with the selected backup.\n\n"
+            "Are you absolutely sure you want to continue?",
+        )
+        if not confirmed:
+            return
+        ok, msg = db.restore_database(src)
+        if ok:
+            self._restore_status.config(text=f"✅  {msg}", fg=COLORS["success"])
+            messagebox.showinfo("Restore Successful", msg)
+        else:
+            self._restore_status.config(text=f"❌  {msg}", fg=COLORS["danger"])
+            messagebox.showerror("Restore Failed", msg)
 
