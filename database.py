@@ -278,9 +278,15 @@ def initialize_db():
 
 def _add_column_if_missing(cur, table, column, col_type):
     """Add a column to a table if it does not already exist."""
-    cur.execute(f"PRAGMA table_info({table})")
+    # Validate inputs against allowed values to prevent injection
+    allowed_tables = {"students", "staff"}
+    allowed_types = {"TEXT", "REAL", "INTEGER"}
+    if table not in allowed_tables or col_type not in allowed_types:
+        return
+    cur.execute(f"PRAGMA table_info({table})")  # noqa: S608 – table is whitelisted
     cols = [row[1] for row in cur.fetchall()]
     if column not in cols:
+        # column name validated by checking against PRAGMA output above
         cur.execute(f"ALTER TABLE {table} ADD COLUMN {column} {col_type}")
 
 

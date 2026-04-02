@@ -358,14 +358,18 @@ class StaffDialog(tk.Toplevel):
 
         d = self._data
         currencies = get_available_currencies()
-        self._fv["staff_id"] = make_label_entry(left, "Staff ID *", 0,
-                                                 default=d.get("staff_id", ""), width=26)
+
+        # Staff ID with direct Entry reference for conditional disabling
+        staff_id_var = tk.StringVar(value=d.get("staff_id", ""))
+        self._fv["staff_id"] = staff_id_var
+        tk.Label(left, text="Staff ID *", font=FONTS["body"],
+                 bg=COLORS["white"], anchor="e").grid(
+            row=0, column=0, padx=(10, 4), pady=4, sticky="e")
+        staff_id_entry = tk.Entry(left, textvariable=staff_id_var, font=FONTS["body"],
+                                  width=26, relief=tk.SOLID, bd=1)
+        staff_id_entry.grid(row=0, column=1, padx=(0, 10), pady=4, sticky="w")
         if d.get("staff_id"):
-            # Get the actual Entry widget and disable it
-            for widget in left.winfo_children():
-                if isinstance(widget, tk.Entry):
-                    widget.configure(state="disabled")
-                    break
+            staff_id_entry.configure(state="disabled")
 
         self._fv["first_name"] = make_label_entry(left, "First Name *", 1,
                                                    default=d.get("first_name", ""), width=26)
@@ -471,8 +475,13 @@ class StaffDialog(tk.Toplevel):
                 if os.path.abspath(self._photo_path) != os.path.abspath(dest):
                     shutil.copy2(self._photo_path, dest)
                 saved_path = dest
-            except Exception:
-                saved_path = self._photo_path
+            except Exception as e:
+                messagebox.showwarning(
+                    "Photo Warning",
+                    f"Could not copy photo to storage: {e}\nThe photo will not be saved.",
+                    parent=self
+                )
+                saved_path = ""
         data["photo_path"] = saved_path
 
         for key in ("father_name", "mother_name", "blood_group", "cnic", "religion",

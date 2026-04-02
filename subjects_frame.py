@@ -416,6 +416,9 @@ class AssignTeacherSubjectDialog(tk.Toplevel):
         if not staff_val or not subj_val:
             messagebox.showerror("Validation", "Please select both teacher and subject.", parent=self)
             return
+        if " – " not in staff_val or " – " not in subj_val:
+            messagebox.showerror("Validation", "Invalid selection. Please choose from the list.", parent=self)
+            return
         staff_id = staff_val.split(" – ")[0]
         subject_code = subj_val.split(" – ")[0]
         self._on_save(staff_id, subject_code, year)
@@ -463,6 +466,9 @@ class EnrollStudentDialog(tk.Toplevel):
         year = self._year_var.get().strip()
         if not student_val or not subj_val:
             messagebox.showerror("Validation", "Please select both student and subject.", parent=self)
+            return
+        if " – " not in student_val or " – " not in subj_val:
+            messagebox.showerror("Validation", "Invalid selection. Please choose from the list.", parent=self)
             return
         student_id = student_val.split(" – ")[0]
         subject_code = subj_val.split(" – ")[0]

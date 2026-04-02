@@ -333,8 +333,13 @@ class StudentDialog(tk.Toplevel):
                 if os.path.abspath(self._photo_path) != os.path.abspath(dest):
                     shutil.copy2(self._photo_path, dest)
                 saved_path = dest
-            except Exception:
-                saved_path = self._photo_path
+            except Exception as e:
+                messagebox.showwarning(
+                    "Photo Warning",
+                    f"Could not copy photo to storage: {e}\nThe photo will not be saved.",
+                    parent=self
+                )
+                saved_path = ""
         data["photo_path"] = saved_path
 
         # Fill in optional new fields with empty string defaults
